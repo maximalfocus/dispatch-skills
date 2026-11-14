@@ -188,7 +188,7 @@ unbounded; each row is a rule here.
 
 | firstmate evidence | Rule in dispatch-skills |
 |---|---|
-| `bin/` grew from 8.7k to 160k lines; 63% of commits are fixes | A hard budget: ≤ 12 scripts, ≤ 2,500 script lines in total, enforced by the size gate |
+| `bin/` grew from 8.7k to 160k lines; 63% of commits are fixes | A hard budget: ≤ 16 scripts, ≤ 2,500 script lines in total, enforced by the size gate |
 | ~90 fixes from reading vendor terminal screens to guess agent state | State comes only from structured signals: hook-written files, exit codes, PR and issue state. Never parse a terminal screen; prevent first-run dialogs by configuration instead of detecting them |
 | Always-loaded rules peaked at 18k words; the 9k cap came late and was exceeded 28 more times | Skill caps enforced in CI from day one; a cut deletes rules, it does not move them elsewhere |
 | 18 harness adapters, 13 multiplexer backends, side projects (voice, social bots) | Support Claude Code and Codex, with tmux or herdr, through one small runtime file; everything else is out of scope |
@@ -207,8 +207,8 @@ screen or prose to decide anything (Article 10.5).
 
 | Script | Contract | Why (firstmate evidence) |
 |---|---|---|
-| `watch` | loop every 15 s; touch a beacon file; poll GitHub for new `HANDBACK`/`ACCEPT` comments and PR head changes, and worker state files for idle-without-hand-back; append `epoch, seq, kind, key, payload` to a durable wake queue under a lock; one watcher per project (`mkdir` lock holding the pid); a repeated key is not re-queued until its state changes | swallowed and doubled wakes, alarm floods |
-| `drain` | print queued wakes; `--ack-through <seq>` removes them only after they were handled, so a crash re-handles rather than loses | a finished worker's last event was absorbed and missed |
+| `watch` (`skills/dispatch/scripts/watch.sh`) | loop every 15 s; touch a beacon; queue `handback` and `verdict` for new `HANDBACK`/`ACCEPT` comment lines, `head` when a handed-back PR's live head moved, `idle` for a worker idle ≥ 5 min with no hand-back just before, `error` after 20 failed GitHub polls; queue rows `epoch, seq, kind, key, payload`, each key once; one watcher per project; exit 0 with wakes, 124 quiet, 3 already running | swallowed and doubled wakes, alarm floods |
+| `drain` (`skills/dispatch/scripts/drain.sh`) | print queued wakes (124 when empty); `--ack-through <seq>` removes them only after they were handled, so a crash re-handles rather than loses | a finished worker's last event was absorbed and missed |
 | `turnend-guard` | Stop hook: if work is in flight (worker state files exist) and the watcher is not healthy (lock pid alive, beacon younger than 5 min), block the stop (exit 2) with the repair line; at most 3 blocks, then allow loudly; inert inside worker worktrees | sessions sat blind for hours after a turn ended unarmed |
 | `autoarm` | Claude Code: an async Stop hook runs the watcher in the foreground and exits 2 with the wake reason, which wakes the idle session. Codex: a blocking `watch --once --seconds 180` checkpoint call instead | the same blind-turn incidents |
 | `start` | create a linked worktree; pre-register folder trust in the agent's config; launch the agent with the Brief and per-worker hooks that write `busy`/`idle`/`turn-ended` to the worker's state file; write `<id>.meta`; confirm `busy` within 60 s or fail; refuse over the WIP limit with exit 75 (queued) | workers wedged on a trust dialog; surplus workers burning turns |

@@ -14,9 +14,10 @@ for f in skills/*/SKILL.md; do
   grep -q '^## Never' "$f" || bad "$f: no '## Never' list"
   grep -q '^## After completion' "$f" || bad "$f: no '## After completion'"
   grep -q 'dispatch-evolve' "$f" || bad "$f: does not route lessons to /dispatch-evolve"
-  # every backticked repo path must exist
+  # every backticked path must exist, from the repo root or from the skill's own directory
   grep -o '`\(skills\|scripts\)/[A-Za-z0-9_./-]*`' "$f" | tr -d '`' | sort -u | while read -r p; do
-    [ -e "$p" ] || { echo "FAIL: $f: reference $p does not exist"; exit 1; }
+    [ -e "$p" ] || [ -e "$(dirname "$f")/$p" ] ||
+      { echo "FAIL: $f: reference $p does not exist"; exit 1; }
   done || fail=1
 done
 grep -q '^## Hand-off formats' skills/dispatch/SKILL.md || bad "dispatch: no Hand-off formats section"

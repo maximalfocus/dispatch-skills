@@ -54,8 +54,9 @@ Caps: `skills/dispatch/SKILL.md` ≤ **220** lines; `skills/dispatch-aide/SKILL.
 `skills/dispatch-worker/SKILL.md` ≤ **100**; `skills/dispatch-evolve/SKILL.md` ≤ **100**. Every
 line in `skills/`, `CLAUDE.md`, and Articles 6–10 of this file is at most **100** characters.
 Over cap or over width → compress in the same change; rewrapping to longer lines is not
-compression. Scripts have a budget too: at most **12** files under `scripts/` and **2,500** lines
-in total, tests excluded; a new script must fit or another must shrink. The gate is
+compression. Scripts have a budget too: at most **16** files under `scripts/` and
+`skills/*/scripts/` and **2,500** lines in total, `test-*` excluded; a new script must fit or
+another must shrink. The gate is
 `scripts/size-gate.sh`: it prints `PASS` or one `OVER:` line per offender.
 
 ## Article 7 — Meta-conformance (required skill structure)
