@@ -118,6 +118,14 @@ out=$(watch 2>"$tmp/err9b"); check "the note does not repeat" '! grep -q "commen
 comment 61 "ACCEPT issue=#9 head=aaaa verdict=PASS evidence=x" COLLABORATOR | comments
 out=$(watch); check "a trusted verdict still wakes" 'has "verdict ACCEPT issue=#9"'
 drain --ack-through 999 >/dev/null
+# A bare org member is not write access: trusted only when the default is widened.
+comment 62 "HANDBACK issue=#9 pr=#31 head=beef status=done" MEMBER | comments
+out=$(watch 2>"$tmp/err9c"); rc=$?
+check "a MEMBER is untrusted by default" '[ "$rc" -eq 124 ] && ! has beef'
+out=$( cd "$repo" && DISPATCH_TRUSTED_AUTHORS="OWNER COLLABORATOR MEMBER" \
+  "$here/watch.sh" --once )
+check "a MEMBER is admitted when configured" 'has beef'
+drain --ack-through 999 >/dev/null
 
 # 10. Reclaiming a dead holder runs under the steal mutex, so a second starter cannot steal.
 rm -rf "$st/watch.lock" "$st/watch.mutex"; mkdir -p "$st/watch.lock" "$st/watch.mutex"

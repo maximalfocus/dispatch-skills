@@ -12,8 +12,9 @@
 #             went idle; worker files are workers/<id>.state = "<busy|idle> <epoch> <issue>"
 #   error     GitHub unreachable for 20 polls in a row       key error:github:<hour>
 # A comment counts only when its author has write access: `author_association` must be in
-# DISPATCH_TRUSTED_AUTHORS (default "OWNER MEMBER COLLABORATOR"). Anyone else's HANDBACK or ACCEPT
-# line is data, not an event: it is noted once on stderr and never wakes the dispatcher (Article 8).
+# DISPATCH_TRUSTED_AUTHORS (default "OWNER COLLABORATOR"; an org that trusts its members adds
+# MEMBER). Anyone else's HANDBACK or ACCEPT line is data, not an event: it is noted once on stderr
+# and never wakes the dispatcher (Article 8).
 # Exit: 0 wakes queued (printed with the ack command) · 124 quiet until --once or --seconds ran
 #       out · 3 another watcher holds this project · 1 error.
 # Env: DISPATCH_POLL (15 s), DISPATCH_IDLE_SECS, DISPATCH_REPO (owner/name), DISPATCH_GH (gh),
@@ -33,7 +34,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 poll=${DISPATCH_POLL:-15}; idle_after=${DISPATCH_IDLE_SECS:-300}; gh=${DISPATCH_GH:-gh}
-trusted=${DISPATCH_TRUSTED_AUTHORS:-OWNER MEMBER COLLABORATOR}
+trusted=${DISPATCH_TRUSTED_AUTHORS:-OWNER COLLABORATOR}
 trusted=$(printf '%s' "$trusted" | tr '[:lower:]' '[:upper:]')
 case $seconds$poll$idle_after in
   *[!0-9]*) echo "watch: --seconds, DISPATCH_POLL, DISPATCH_IDLE_SECS need whole numbers" >&2
@@ -84,7 +85,8 @@ poll_comments() {  # queue HANDBACK/ACCEPT lines; record hand-backs tab-separate
   while IFS=$'\t' read -r id line url ok; do
     if [ "$ok" != yes ]; then  # an outsider's line is data, not an event (Article 8)
       if ! grep -qxF "skipped:$id" "$st/seen" 2>/dev/null; then
-        echo "watch: ignoring comment $id from $url: author is not trusted" >&2
+        echo "watch: ignoring comment $id from $(ds_clean "$url"): not trusted" \
+          "(see DISPATCH_TRUSTED_AUTHORS)" >&2
         echo "skipped:$id" >> "$st/seen"
       fi
       continue

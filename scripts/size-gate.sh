@@ -18,7 +18,7 @@ scripts=$(find scripts skills/*/scripts -maxdepth 1 -type f ! -name 'test-*' 2>/
 nscripts=$(printf '%s\n' "$scripts" | grep -c .)
 [ "$nscripts" -le 16 ] || { echo "OVER: scripts dirs have $nscripts files (> 16)"; fail=1; }
 slines=$(cat $scripts | wc -l | tr -d ' ')
-[ "$slines" -le 2500 ] || { echo "OVER: scripts/ total $slines lines (> 2500)"; fail=1; }
+[ "$slines" -le 2500 ] || { echo "OVER: scripts dirs total $slines lines (> 2500)"; fail=1; }
 width() {  # file, skip_shared(0/1); counts characters, not bytes
   perl -CSD -ne '
     BEGIN { ($f, $skip) = (shift @ARGV, shift @ARGV); }
