@@ -11,9 +11,13 @@
 #   idle      a worker idle ≥ DISPATCH_IDLE_SECS (300) with no hand-back in the 5 min before it
 #             went idle; worker files are workers/<id>.state = "<busy|idle> <epoch> <issue>"
 #   error     GitHub unreachable for 20 polls in a row       key error:github:<hour>
+# A comment counts only when its author has write access: `author_association` must be in
+# DISPATCH_TRUSTED_AUTHORS (default "OWNER MEMBER COLLABORATOR"). Anyone else's HANDBACK or ACCEPT
+# line is data, not an event: it is noted once on stderr and never wakes the dispatcher (Article 8).
 # Exit: 0 wakes queued (printed with the ack command) · 124 quiet until --once or --seconds ran
 #       out · 3 another watcher holds this project · 1 error.
-# Env: DISPATCH_POLL (15 s), DISPATCH_IDLE_SECS, DISPATCH_REPO (owner/name), DISPATCH_GH (gh).
+# Env: DISPATCH_POLL (15 s), DISPATCH_IDLE_SECS, DISPATCH_REPO (owner/name), DISPATCH_GH (gh),
+#      DISPATCH_TRUSTED_AUTHORS (space-separated author_association values that may wake you).
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 # shellcheck source=lib.sh
@@ -29,6 +33,8 @@ while [ $# -gt 0 ]; do
   shift
 done
 poll=${DISPATCH_POLL:-15}; idle_after=${DISPATCH_IDLE_SECS:-300}; gh=${DISPATCH_GH:-gh}
+trusted=${DISPATCH_TRUSTED_AUTHORS:-OWNER MEMBER COLLABORATOR}
+trusted=$(printf '%s' "$trusted" | tr '[:lower:]' '[:upper:]')
 case $seconds$poll$idle_after in
   *[!0-9]*) echo "watch: --seconds, DISPATCH_POLL, DISPATCH_IDLE_SECS need whole numbers" >&2
     exit 1 ;;
@@ -37,23 +43,27 @@ command -v jq >/dev/null || { echo "watch: jq is required" >&2; exit 1; }
 st=$(ds_state) || exit 1
 repo=${DISPATCH_REPO:-$($gh repo view --json nameWithOwner --jq .nameWithOwner)} || exit 1
 
+# One watcher per project. The steal mutex serialises the check-remove-create below: without it two
+# starters that both see a dead holder can remove the lock each other just re-created.
 lock="$st/watch.lock"
-if ! mkdir "$lock" 2>/dev/null; then
-  i=0  # a fresh holder writes its pid within microseconds: wait rather than steal its lock
-  while [ ! -s "$lock/pid" ] && [ "$i" -lt 20 ]; do sleep 0.1; i=$((i + 1)); done
+ds_lock "$st/watch.mutex" || exit 1
+if [ -d "$lock" ]; then
   holder=$(cat "$lock/pid" 2>/dev/null)
   if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
+    ds_unlock "$st/watch.mutex"
     echo "watch: already running for this project (pid $holder)" >&2; exit 3
   fi
   rm -rf "$lock"  # the holder is provably gone
-  mkdir "$lock" 2>/dev/null || { echo "watch: lost the race for the watcher lock" >&2; exit 3; }
 fi
+mkdir "$lock" 2>/dev/null || {
+  ds_unlock "$st/watch.mutex"; echo "watch: lost the race for the watcher lock" >&2; exit 3; }
 echo $$ > "$lock/pid"
+ds_unlock "$st/watch.mutex"
 trap 'rm -rf "$lock"' EXIT
 trap 'exit 130' INT TERM
 
 poll_comments() {  # queue HANDBACK/ACCEPT lines; record hand-backs tab-separated, then the epoch
-  local since json latest rows id line url issue pr sha
+  local since json latest rows id line url ok issue pr sha
   since=$(cat "$st/gh-since" 2>/dev/null)
   if [ -z "$since" ]; then  # first run: start from now, never replay history
     date -u +%Y-%m-%dT%H:%M:%SZ > "$st/gh-since"; return 0
@@ -62,13 +72,23 @@ poll_comments() {  # queue HANDBACK/ACCEPT lines; record hand-backs tab-separate
     "repos/$repo/issues/comments?since=$since&sort=updated&direction=asc&per_page=100") || return 1
   printf '%s' "$json" | jq -e 'type == "array"' >/dev/null 2>&1 || return 1
   # odd JSON must fail here, before the cursor moves, or that comment's hand-back is lost.
-  rows=$(printf '%s' "$json" | jq -r '.[] | . as $c
+  rows=$(printf '%s' "$json" | jq -r --arg trusted "$trusted" '.[] | . as $c
       | (.body | if type == "string" then . else "" end) as $body
       | [$body | split("\n")[] | sub("\r$"; "") | select(test("^(HANDBACK|ACCEPT) "))][0] // empty
-      | [($c.id | tostring), ., (($c.html_url // "") | tostring)] | @tsv') || return 1
+      | (($c.author_association // "") | if type == "string" then ascii_upcase else "" end) as $who
+      | [($c.id | tostring), ., (($c.html_url // "") | tostring),
+         (if ($trusted | split(" ") | index($who)) != null then "yes" else "no" end)]
+      | @tsv') || return 1
   [ -z "$rows" ] ||
   printf '%s\n' "$rows" |
-  while IFS=$'\t' read -r id line url; do
+  while IFS=$'\t' read -r id line url ok; do
+    if [ "$ok" != yes ]; then  # an outsider's line is data, not an event (Article 8)
+      if ! grep -qxF "skipped:$id" "$st/seen" 2>/dev/null; then
+        echo "watch: ignoring comment $id from $url: author is not trusted" >&2
+        echo "skipped:$id" >> "$st/seen"
+      fi
+      continue
+    fi
     case $line in
       HANDBACK*)
         if ! grep -qxF "comment:$id" "$st/seen" 2>/dev/null; then
@@ -81,6 +101,7 @@ poll_comments() {  # queue HANDBACK/ACCEPT lines; record hand-backs tab-separate
       *) ds_enqueue "$st" verdict "comment:$id" "$line $url" ;;
     esac
   done
+  ds_trim "$st/seen"  # an outsider's marker must not grow this file without bound
   latest=$(printf '%s' "$json" | jq -r 'map(.updated_at | if type == "string" then . else "" end)
     | max // empty')
   [ -z "$latest" ] || echo "$latest" > "$st/gh-since"
@@ -120,7 +141,9 @@ poll_workers() {
 # Wakes left from a run that ended before they were acknowledged come first.
 ds_print_queue "$st" && exit 0
 
-start=$(date +%s); fails=0
+start=$(date +%s)
+fails=$(cat "$st/gh-fails" 2>/dev/null)  # durable: a --once checkpoint must still see an outage
+case $fails in ''|*[!0-9]*) fails=0 ;; esac
 while :; do
   touch "$st/watch.beat"
   if poll_comments && poll_heads; then
@@ -131,6 +154,7 @@ while :; do
     [ "$fails" -lt 20 ] ||
       ds_enqueue "$st" error "error:github:$(date +%Y%m%d%H)" "GitHub unreachable for $fails polls"
   fi
+  echo "$fails" > "$st/gh-fails"
   poll_workers
   ds_print_queue "$st" && exit 0
   [ "$once" -eq 0 ] || exit 124

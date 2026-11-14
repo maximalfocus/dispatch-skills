@@ -25,9 +25,9 @@ export FAKE="$fake" DISPATCH_GH="$fake/gh" DISPATCH_REPO=o/r DISPATCH_POLL=0
 st="$repo/.dispatch/state"
 watch() { (cd "$repo" && "$here/watch.sh" --once "$@"); }
 drain() { (cd "$repo" && "$here/drain.sh" "$@"); }
-comment() {  # id body
-  jq -n --argjson id "$1" --arg b "$2" \
-    '{id: $id, body: $b, html_url: "https://x/c/\($id)",
+comment() {  # id body [author_association]
+  jq -n --argjson id "$1" --arg b "$2" --arg a "${3:-OWNER}" \
+    '{id: $id, body: $b, html_url: "https://x/c/\($id)", author_association: $a,
       updated_at: "2026-11-14T00:00:0\($id % 10)Z"}'
 }
 comments() { jq -s . > "$fake/comments.json"; }
@@ -106,6 +106,37 @@ echo "idle notanumber 20" > "$st/workers/w20.state"
 watch >/dev/null 2>"$tmp/err8"; rc=$?
 check "bad worker state file survives" '[ "$rc" -eq 124 ] && grep -q "no idle epoch" "$tmp/err8"'
 rm -f "$st/workers/w20.state"
+
+# 9. Only comments whose author has write access count; an outsider's line is noted once.
+echo '[]' > "$fake/pulls.json"
+comment 60 "HANDBACK issue=#9 pr=#30 head=f00d status=done" NONE | comments
+out=$(watch 2>"$tmp/err9"); rc=$?
+check "untrusted hand-back never wakes" '[ "$rc" -eq 124 ] && ! has f00d'
+check "no hand-back was recorded" '! grep -q f00d "$st/handbacks"'
+check "the outsider is noted once" 'grep -q "comment 60" "$tmp/err9"'
+out=$(watch 2>"$tmp/err9b"); check "the note does not repeat" '! grep -q "comment 60" "$tmp/err9b"'
+comment 61 "ACCEPT issue=#9 head=aaaa verdict=PASS evidence=x" COLLABORATOR | comments
+out=$(watch); check "a trusted verdict still wakes" 'has "verdict ACCEPT issue=#9"'
+drain --ack-through 999 >/dev/null
+
+# 10. Reclaiming a dead holder runs under the steal mutex, so a second starter cannot steal.
+rm -rf "$st/watch.lock" "$st/watch.mutex"; mkdir -p "$st/watch.lock" "$st/watch.mutex"
+echo 999999 > "$st/watch.lock/pid"; echo $$ > "$st/watch.mutex/pid"
+echo '[]' > "$fake/comments.json"
+( cd "$repo" && DS_LOCK_TRIES=3 "$here/watch.sh" --once ) >/dev/null 2>&1; rc=$?
+check "blocked stealer exits 1" '[ "$rc" -eq 1 ]'
+check "it left the stale lock alone" '[ "$(cat "$st/watch.lock/pid")" = 999999 ]'
+rm -rf "$st/watch.lock" "$st/watch.mutex"
+watch >/dev/null 2>&1; rc=$?
+check "steal mutex released after a run" '[ "$rc" -eq 124 ] && [ ! -d "$st/watch.mutex" ]'
+
+# 11. Failures are counted across runs, so a --once checkpoint still reports a long outage.
+echo 19 > "$st/gh-fails"; echo 'not json' > "$fake/comments.json"
+out=$(watch 2>/dev/null); rc=$?
+check "20th failure in a row wakes" '[ "$rc" -eq 0 ] && has "error GitHub unreachable"'
+drain --ack-through 999 >/dev/null; echo '[]' > "$fake/comments.json"
+watch >/dev/null 2>&1
+check "a success resets the counter" '[ "$(cat "$st/gh-fails")" = 0 ]'
 
 echo "test-watch: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

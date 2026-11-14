@@ -16,10 +16,11 @@ ds_state() {  # print the state dir, creating it and its git exclusion on first 
 }
 
 ds_lock() {  # take a short critical-section lock (a directory holding the owner's pid)
-  local lock=$1 i=0 holder
+  local lock=$1 i=0 holder tries=${DS_LOCK_TRIES:-50}
+  case $tries in ''|*[!0-9]*) tries=50 ;; esac  # 0.1 s each; tests pass a smaller bound
   while ! mkdir "$lock" 2>/dev/null; do
     i=$((i + 1))
-    if [ "$i" -ge 50 ]; then  # 5 s: reclaim only when the holder is provably gone
+    if [ "$i" -ge "$tries" ]; then  # 5 s: reclaim only when the holder is provably gone
       holder=$(cat "$lock/pid" 2>/dev/null)
       if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then
         rm -rf "$lock"; i=0; continue
@@ -33,11 +34,18 @@ ds_lock() {  # take a short critical-section lock (a directory holding the owner
 
 ds_unlock() { rm -rf "$1"; }
 
+ds_clean() {  # untrusted text -> one printable fact: no tabs/newlines, no C0 controls, bounded
+  printf '%s' "$1" | tr '\t\n\r' '   ' | LC_ALL=C tr -d '\001-\037\177' | cut -c 1-400
+}
+
+ds_trim() {  # keep a key file bounded; keys only need to outlive their events
+  [ "$(wc -l < "$1")" -gt 6000 ] || return 0
+  tail -n 5000 "$1" > "$1.tmp" && mv "$1.tmp" "$1"
+}
+
 ds_enqueue() {  # state kind key payload — queue one wake unless its key was already queued
   local st=$1 kind=$2 key=$3 payload seq
-  # comment text is untrusted: no tabs/newlines (they are the row), no C0 controls (ANSI
-  # escapes would overwrite the dispatcher's own lines), and short enough to stay a fact.
-  payload=$(printf '%s' "$4" | tr '\t\n\r' '   ' | LC_ALL=C tr -d '\001-\037\177' | cut -c 1-400)
+  payload=$(ds_clean "$4")  # comment text is untrusted: see ds_clean
   ds_lock "$st/queue.lock" || return 1
   if ! grep -qxF -- "$key" "$st/seen" 2>/dev/null; then
     seq=$(( $(cat "$st/wake-seq" 2>/dev/null || echo 0) + 1 ))
@@ -45,9 +53,7 @@ ds_enqueue() {  # state kind key payload — queue one wake unless its key was a
       >> "$st/wake-queue"
     echo "$seq" > "$st/wake-seq"
     echo "$key" >> "$st/seen"
-    if [ "$(wc -l < "$st/seen")" -gt 6000 ]; then  # keys only need to outlive their events
-      tail -n 5000 "$st/seen" > "$st/seen.tmp" && mv "$st/seen.tmp" "$st/seen"
-    fi
+    ds_trim "$st/seen"
   fi
   ds_unlock "$st/queue.lock"
 }
