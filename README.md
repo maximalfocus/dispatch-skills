@@ -45,11 +45,18 @@ dispatch-skills/scripts/install.sh   # links skills into ~/.claude/skills and ~/
 
 Then start a session in your project and say `/dispatch`.
 
+## Design
+
+`DESIGN.md` derives the model from its intent: ten intents, nine principles, the decision-rights
+matrix, the lifecycle (inception, delivery, release), the quality strategy, the user-attention
+model (Know / Decide / Do), flow metrics, continuity, sibling projects, what firstmate taught and
+what it cost, and the contract for every mechanism script.
+
 ## Status
 
-v0.1: the roles, hand-off formats, and constitution. The mechanics table in each skill lists the
-scripts that will enforce them (watcher, turn-end guard, worker start, capacity, environment lock,
-head-pinned land, board); until each lands, the skill describes the same check done by hand.
+v0.1: roles, lifecycle, hand-off formats, constitution, and design. The mechanism scripts
+(`DESIGN.md` §12) are tracked as issues; until each lands, the skills describe the same check done
+by hand, exactly as its contract states.
 
 ## Evolution
 

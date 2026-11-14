@@ -14,6 +14,11 @@ cap skills/dispatch/SKILL.md 220
 cap skills/dispatch-aide/SKILL.md 200
 cap skills/dispatch-worker/SKILL.md 100
 cap skills/dispatch-evolve/SKILL.md 100
+scripts=$(find scripts -maxdepth 1 -type f ! -name 'test-*' | sort)
+nscripts=$(printf '%s\n' "$scripts" | grep -c .)
+[ "$nscripts" -le 12 ] || { echo "OVER: scripts/ has $nscripts files (> 12)"; fail=1; }
+slines=$(cat $scripts | wc -l | tr -d ' ')
+[ "$slines" -le 2500 ] || { echo "OVER: scripts/ total $slines lines (> 2500)"; fail=1; }
 width() {  # file, skip_shared(0/1); counts characters, not bytes
   perl -CSD -ne '
     BEGIN { ($f, $skip) = (shift @ARGV, shift @ARGV); }

@@ -54,7 +54,9 @@ Caps: `skills/dispatch/SKILL.md` ≤ **220** lines; `skills/dispatch-aide/SKILL.
 `skills/dispatch-worker/SKILL.md` ≤ **100**; `skills/dispatch-evolve/SKILL.md` ≤ **100**. Every
 line in `skills/`, `CLAUDE.md`, and Articles 6–10 of this file is at most **100** characters.
 Over cap or over width → compress in the same change; rewrapping to longer lines is not
-compression. The gate is `scripts/size-gate.sh`: it prints `PASS` or one `OVER:` line per offender.
+compression. Scripts have a budget too: at most **12** files under `scripts/` and **2,500** lines
+in total, tests excluded; a new script must fit or another must shrink. The gate is
+`scripts/size-gate.sh`: it prints `PASS` or one `OVER:` line per offender.
 
 ## Article 7 — Meta-conformance (required skill structure)
 
@@ -83,8 +85,9 @@ the structural part; the semantic part is judgment.
 Every change reaches `maximalfocus/dispatch-skills` on `main` through a focused PR
 (`evolve/<slug>` or `issue/<n>-<slug>`), checks green, branch deleted. Stage only the paths this
 session changed (`git add <paths>`, never `-A`). Never force-push. Edit only the surfaces this repo
-ships: `CONSTITUTION.md`, `CLAUDE.md`, `README.md`, `skills/`, `scripts/`, `.github/`. Run
-`scripts/size-gate.sh` and `scripts/validate.sh` before delivery and report the merge SHA.
+ships: `CONSTITUTION.md`, `DESIGN.md`, `CLAUDE.md`, `README.md`, `skills/`, `scripts/`,
+`.github/`. Run `scripts/size-gate.sh` and `scripts/validate.sh` before delivery and report the
+merge SHA.
 
 ## Article 10 — Role integrity (the model)
 
@@ -102,7 +105,9 @@ The methodology is one model, and every change must keep it whole:
    judgment. A lesson that relied on an agent "remembering" is fixed in a script, not a reminder.
 4. **The user's attention is the scarcest resource.** One ask at a time, with the exact screen or
    command ready; routine progress is batched; silence never hides a failure, decision, or risk.
-5. **Records, not recollection.** A team survives restart and context compaction from durable
+5. **Facts, not screens.** State comes from structured signals (hook-written files, exit codes,
+   PR and issue state); no script parses a terminal screen or prose to decide what an agent did.
+6. **Records, not recollection.** A team survives restart and context compaction from durable
    records (GitHub state plus a bounded board), never from a growing narrative log.
 
 A change that adds a role, a hierarchy level, or a second channel to the user is a model change

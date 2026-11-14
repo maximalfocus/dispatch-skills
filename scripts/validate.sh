@@ -20,8 +20,8 @@ for f in skills/*/SKILL.md; do
   done || fail=1
 done
 grep -q '^## Hand-off formats' skills/dispatch/SKILL.md || bad "dispatch: no Hand-off formats section"
-for fmt in 'HANDBACK issue=' 'ACCEPT-REQ issue=' 'ACCEPT issue=' 'ASK <id>' 'XPROJ from='; do
-  grep -q "$fmt" skills/dispatch/SKILL.md || bad "dispatch: format '$fmt' missing"
+for fmt in 'HANDBACK issue=' 'ACCEPT-REQ issue=' 'ACCEPT issue=' 'ASK kind=' '**Stage report**' 'XPROJ from='; do
+  grep -qF "$fmt" skills/dispatch/SKILL.md || bad "dispatch: format '$fmt' missing"
 done
 grep -q '^## GATE' skills/dispatch-evolve/SKILL.md || bad "dispatch-evolve: no GATE checkpoint"
 [ "$fail" -eq 0 ] && echo PASS || exit 1

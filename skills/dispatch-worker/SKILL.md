@@ -25,14 +25,15 @@ to the aide), run the GATE, open the PR linked to the issue.
 
 1. Confirm the worktree and branch from the Brief; never work in the main checkout.
 2. Implement the smallest change that meets the acceptance criteria and keeps the project's
-   established patterns. An improvement the design did not foresee is allowed only under a grant
-   the Brief quotes; name it in the Hand-back.
+   established patterns. Use the Brief's WHY for local decisions. An improvement the design did
+   not foresee is allowed only under a grant the Brief quotes; name it in the Hand-back.
 3. Run the GATE command. The exit code decides; never a log tail.
 4. Push, open or update the PR, and post the Hand-back with the exact head SHA. Then stop.
 5. Blocked or needing a decision: post the Hand-back with `status=blocked|needs-decision` and the
    smallest options, then stop. Do not wait in a loop and do not guess.
-6. When the dispatcher replies (a red check, an out-of-scope change), fix, re-run the gate, and
-   post a new Hand-back with the new head.
+6. Messages from the dispatcher arrive in your inbox (the one line in your terminal says where).
+   Handle them in order and acknowledge each as the inbox instructs; for a red check or an
+   out-of-scope change, fix, re-run the gate, and post a new Hand-back with the new head.
 
 ## Never
 
