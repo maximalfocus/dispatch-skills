@@ -35,7 +35,9 @@ ds_unlock() { rm -rf "$1"; }
 
 ds_enqueue() {  # state kind key payload — queue one wake unless its key was already queued
   local st=$1 kind=$2 key=$3 payload seq
-  payload=$(printf '%s' "$4" | tr '\t\n' '  ')
+  # comment text is untrusted: no tabs/newlines (they are the row), no C0 controls (ANSI
+  # escapes would overwrite the dispatcher's own lines), and short enough to stay a fact.
+  payload=$(printf '%s' "$4" | tr '\t\n\r' '   ' | LC_ALL=C tr -d '\001-\037\177' | cut -c 1-400)
   ds_lock "$st/queue.lock" || return 1
   if ! grep -qxF -- "$key" "$st/seen" 2>/dev/null; then
     seq=$(( $(cat "$st/wake-seq" 2>/dev/null || echo 0) + 1 ))

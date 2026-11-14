@@ -16,7 +16,7 @@ cap skills/dispatch-worker/SKILL.md 100
 cap skills/dispatch-evolve/SKILL.md 100
 scripts=$(find scripts skills/*/scripts -maxdepth 1 -type f ! -name 'test-*' 2>/dev/null | sort)
 nscripts=$(printf '%s\n' "$scripts" | grep -c .)
-[ "$nscripts" -le 12 ] || { echo "OVER: scripts/ has $nscripts files (> 16)"; fail=1; }
+[ "$nscripts" -le 16 ] || { echo "OVER: scripts dirs have $nscripts files (> 16)"; fail=1; }
 slines=$(cat $scripts | wc -l | tr -d ' ')
 [ "$slines" -le 2500 ] || { echo "OVER: scripts/ total $slines lines (> 2500)"; fail=1; }
 width() {  # file, skip_shared(0/1); counts characters, not bytes
@@ -26,6 +26,8 @@ width() {  # file, skip_shared(0/1); counts characters, not bytes
     chomp; if (!$s && length($_) > 100) { printf "OVER: %s:%d (%d chars)\n", $f, $., length; $bad = 1 }
     END { exit($bad ? 1 : 0) }' "$1" "$2" "$1" || fail=1
 }
-for f in skills/*/SKILL.md CLAUDE.md; do width "$f" 0; done
+for f in skills/*/SKILL.md skills/*/scripts/*.sh CLAUDE.md; do
+  [ -f "$f" ] || continue; width "$f" 0
+done
 width CONSTITUTION.md 1
 [ "$fail" -eq 0 ] && echo PASS || exit 1

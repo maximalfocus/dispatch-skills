@@ -92,5 +92,20 @@ watch >/dev/null 2>"$tmp/err"; rc=$?
 check "bad response is survivable" '[ "$rc" -eq 124 ]'
 check "bad response is reported" 'grep -q "GitHub poll failed (1 in a row)" "$tmp/err"'
 
+# 8. A hand-back without head= must not shift its row; a bad worker state file must not kill us.
+echo '[]' > "$fake/comments.json"; echo '[]' > "$fake/pulls.json"
+comment 50 "HANDBACK issue=#20 pr=#20 status=done" | comments
+out=$(watch); rc=$?
+check "hand-back without a head still wakes" '[ "$rc" -eq 0 ] && has handback'
+drain --ack-through 99 >/dev/null
+echo '[{"number":20,"head":{"sha":"ffff"}}]' > "$fake/pulls.json"
+echo "idle $(( $(date +%s) - 400 )) 20" > "$st/workers/w20.state"
+watch >/dev/null 2>"$tmp/err8"; rc=$?
+check "no head recorded, idle suppressed" '[ "$rc" -eq 124 ]'
+echo "idle notanumber 20" > "$st/workers/w20.state"
+watch >/dev/null 2>"$tmp/err8"; rc=$?
+check "bad worker state file survives" '[ "$rc" -eq 124 ] && grep -q "no idle epoch" "$tmp/err8"'
+rm -f "$st/workers/w20.state"
+
 echo "test-watch: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

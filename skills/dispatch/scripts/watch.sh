@@ -29,12 +29,18 @@ while [ $# -gt 0 ]; do
   shift
 done
 poll=${DISPATCH_POLL:-15}; idle_after=${DISPATCH_IDLE_SECS:-300}; gh=${DISPATCH_GH:-gh}
+case $seconds$poll$idle_after in
+  *[!0-9]*) echo "watch: --seconds, DISPATCH_POLL, DISPATCH_IDLE_SECS need whole numbers" >&2
+    exit 1 ;;
+esac
 command -v jq >/dev/null || { echo "watch: jq is required" >&2; exit 1; }
 st=$(ds_state) || exit 1
 repo=${DISPATCH_REPO:-$($gh repo view --json nameWithOwner --jq .nameWithOwner)} || exit 1
 
 lock="$st/watch.lock"
 if ! mkdir "$lock" 2>/dev/null; then
+  i=0  # a fresh holder writes its pid within microseconds: wait rather than steal its lock
+  while [ ! -s "$lock/pid" ] && [ "$i" -lt 20 ]; do sleep 0.1; i=$((i + 1)); done
   holder=$(cat "$lock/pid" 2>/dev/null)
   if [ -n "$holder" ] && kill -0 "$holder" 2>/dev/null; then
     echo "watch: already running for this project (pid $holder)" >&2; exit 3
@@ -46,8 +52,8 @@ echo $$ > "$lock/pid"
 trap 'rm -rf "$lock"' EXIT
 trap 'exit 130' INT TERM
 
-poll_comments() {  # queue HANDBACK/ACCEPT lines; record hand-backs as "issue pr head epoch"
-  local since json latest
+poll_comments() {  # queue HANDBACK/ACCEPT lines; record hand-backs tab-separated, then the epoch
+  local since json latest rows id line url issue pr sha
   since=$(cat "$st/gh-since" 2>/dev/null)
   if [ -z "$since" ]; then  # first run: start from now, never replay history
     date -u +%Y-%m-%dT%H:%M:%SZ > "$st/gh-since"; return 0
@@ -55,23 +61,28 @@ poll_comments() {  # queue HANDBACK/ACCEPT lines; record hand-backs as "issue pr
   json=$($gh api \
     "repos/$repo/issues/comments?since=$since&sort=updated&direction=asc&per_page=100") || return 1
   printf '%s' "$json" | jq -e 'type == "array"' >/dev/null 2>&1 || return 1
-  printf '%s' "$json" | jq -r '.[] | . as $c | [(.body // "") | split("\n")[] | sub("\r$"; "")
-      | select(test("^(HANDBACK|ACCEPT) "))][0] // empty | [$c.id, ., $c.html_url] | @tsv' |
+  # odd JSON must fail here, before the cursor moves, or that comment's hand-back is lost.
+  rows=$(printf '%s' "$json" | jq -r '.[] | . as $c
+      | (.body | if type == "string" then . else "" end) as $body
+      | [$body | split("\n")[] | sub("\r$"; "") | select(test("^(HANDBACK|ACCEPT) "))][0] // empty
+      | [($c.id | tostring), ., (($c.html_url // "") | tostring)] | @tsv') || return 1
+  [ -z "$rows" ] ||
+  printf '%s\n' "$rows" |
   while IFS=$'\t' read -r id line url; do
     case $line in
       HANDBACK*)
         if ! grep -qxF "comment:$id" "$st/seen" 2>/dev/null; then
-          printf '%s %s %s %s\n' \
-            "$(printf '%s' "$line" | sed -n 's/.*issue=#\([0-9]*\).*/\1/p')" \
-            "$(printf '%s' "$line" | sed -n 's/.*pr=#\([0-9]*\).*/\1/p')" \
-            "$(printf '%s' "$line" | sed -n 's/.*head=\([0-9a-fA-F]*\).*/\1/p')" \
-            "$(date +%s)" >> "$st/handbacks"
+          issue=$(printf '%s' "$line" | sed -n 's/.*issue=#\([0-9]*\).*/\1/p')
+          pr=$(printf '%s' "$line" | sed -n 's/.*pr=#\([0-9]*\).*/\1/p')
+          sha=$(printf '%s' "$line" | sed -n 's/.*head=\([0-9a-fA-F]*\).*/\1/p')
+          printf '%s\t%s\t%s\t%s\n' "$issue" "$pr" "$sha" "$(date +%s)" >> "$st/handbacks"
         fi
         ds_enqueue "$st" handback "comment:$id" "$line $url" ;;
       *) ds_enqueue "$st" verdict "comment:$id" "$line $url" ;;
     esac
   done
-  latest=$(printf '%s' "$json" | jq -r 'map(.updated_at) | max // empty')
+  latest=$(printf '%s' "$json" | jq -r 'map(.updated_at | if type == "string" then . else "" end)
+    | max // empty')
   [ -z "$latest" ] || echo "$latest" > "$st/gh-since"
 }
 
@@ -80,9 +91,9 @@ poll_heads() {  # a handed-back PR whose live head is not the handed-back head m
   [ -s "$st/handbacks" ] || return 0
   json=$($gh api "repos/$repo/pulls?state=open&per_page=100") || return 1
   printf '%s' "$json" | jq -e 'type == "array"' >/dev/null 2>&1 || return 1
-  printf '%s' "$json" | jq -r '.[] | "\(.number) \(.head.sha)"' |
+  printf '%s' "$json" | jq -r '.[] | select(.head.sha) | "\(.number) \(.head.sha)"' |
   while read -r pr sha; do
-    handed=$(awk -v p="$pr" '$2 == p { h = $3 } END { print h }' "$st/handbacks")
+    handed=$(awk -F'\t' -v p="$pr" '$2 == p { h = $3 } END { print h }' "$st/handbacks")
     [ -n "$handed" ] || continue
     case $sha in "$handed"*) continue ;; esac
     ds_enqueue "$st" head "head:$pr:$sha" "PR #$pr head moved to $sha after hand-back at $handed"
@@ -96,9 +107,11 @@ poll_workers() {
     [ -f "$f" ] || continue
     id=$(basename "$f" .state); read -r state since issue < "$f"
     [ "$state" = idle ] && [ -n "$since" ] || continue
+    case $since in *[!0-9]*)  # a half-written file must not kill the watcher
+      echo "watch: skipping $f: no idle epoch in '$since'" >&2; continue ;; esac
     [ $((now - since)) -ge "$idle_after" ] || continue
-    recent=$(awk -v i="$issue" -v s="$since" '$1 == i && $4 >= s - 300 { n++ } END { print n+0 }' \
-      "$st/handbacks" 2>/dev/null || echo 0)
+    recent=$(awk -F'\t' -v i="$issue" -v s="$since" '$1 == i && $4 + 0 >= s - 300 { n++ }
+      END { print n+0 }' "$st/handbacks" 2>/dev/null || echo 0)
     [ "${recent:-0}" -eq 0 ] || continue
     ds_enqueue "$st" idle "idle:$id:$since" "worker $id (issue #${issue:-?}) idle with no hand-back"
   done
