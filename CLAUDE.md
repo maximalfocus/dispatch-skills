@@ -15,3 +15,5 @@ change. The hand-off formats live only in `skills/dispatch/SKILL.md`; other skil
 - Keep the skills project-neutral: no employer, customer, product, or person names; examples use
   generic stacks.
 - Commit as `maximalfocus <21332201+maximalfocus@users.noreply.github.com>`; deliver through a PR.
+
+Integration-branch: main
