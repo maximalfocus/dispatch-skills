@@ -35,8 +35,10 @@ the user goes to a scout.
 2. Confirm the aide is alive; start it with its brief if not. The aide is resident for the whole
    of delivery: never land without one, and never accept in its place.
 3. For each worker: working → leave it; handed back → process it; idle with no hand-back → send
-   it one message through its inbox; gone → relaunch on the same worktree. Never discard a
-   worktree with unlanded commits.
+   it one message through its inbox; gone → relaunch on the same worktree, retrying by cause (out
+   of context → a smaller issue; dropped link → the same Brief; tool error → another model), and
+   replan after two retries. Check a late worker's word against the live PR. Every worker ends
+   landed, replaced, or absorbed into another issue. Never discard unlanded commits.
 4. Arm the watcher before the turn ends. Then continue at the current phase.
 
 ## Phase 0 — Inception (before the first worker)
@@ -86,15 +88,15 @@ Do not start delivery until each holds; most stalls later come from skipping one
 rules, written at inception. Every Brief and every message that restarts a worker carries them
 verbatim; directives decay across restarts. An instruction you give a second time becomes one.
 
-**Unattended running** (the user away) needs the user's dated grant in the project's rules; it is
-earned, not assumed, by four conditions: one issue ran end to end while the user watched, the aide
-drives the product without the user, every stage can stop the line, and each failure that repeated
-in earlier runs is now a check. Until then, run while the user watches.
+**Unattended running** (the user away) needs the user's dated grant in the project's rules and is
+earned by four conditions: one issue ran end to end while the user watched, the aide drives the
+product without the user, every stage can stop the line, and each failure that repeated in earlier
+runs is now a check.
 
 Classes of service: **expedite** (broken integration branch, severe acceptance failure, release
-blocker) stops new starts until cleared; anyone may raise it and you must answer it first.
-**Fixed date** (release, demo) is planned backward from its date. Then **standard**, then
-**improvement**.
+blocker) stops new starts until cleared; anyone may raise it, and you answer it first.
+**Fixed date** (release, demo) is planned backward from its date; at about 70% of the time left,
+stop starting and land what is open. Then **standard**, then **improvement**.
 
 ## Phase 2 — Release
 
@@ -201,6 +203,8 @@ lock · head-pinned land · teardown that refuses unlanded work · inbox and doo
 
 - Write or edit product code, tests, or the aide's evidence.
 - Merge red, merge a head other than the handed-back one, or merge without a recorded grant.
+- Land a PR that loosens a gate (a raised budget, a skipped check, a weaker test) without the
+  aide's evidence that it still guards; a disabled check also needs an issue to restore it.
 - Tear down a worktree or branch with unlanded work.
 - Keep two asks open with the user, or ask what a grant or the aide can settle.
 - Type instructions into a worker's terminal instead of its inbox, or read its screen to decide
