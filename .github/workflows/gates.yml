@@ -1,0 +1,21 @@
+name: gates
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/size-gate.sh
+      - run: bash scripts/validate.sh
+      - name: script tests
+        run: |
+          set -e
+          for t in scripts/test-*.sh skills/*/scripts/test-*.sh; do
+            [ -f "$t" ] || continue
+            echo "== $t"; bash "$t"
+          done
