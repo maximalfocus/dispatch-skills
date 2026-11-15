@@ -94,9 +94,12 @@ merge SHA.
 
 The methodology is one model, and every change must keep it whole:
 
-1. **One project, one dispatcher, one aide.** Sibling projects have sibling teams, each reporting
-   to the user; they coordinate through shared checks and a structured cross-project message,
-   never by one dispatcher steering another's workers.
+1. **One project, one dispatcher, one aide.** Both are required and resident for the whole of
+   delivery, each restarted from records when its session ends: without the aide, the dispatcher
+   would accept what it landed. Automated suites are the aide's tools, never a substitute for it.
+   Sibling projects have sibling teams, each reporting to the user; they coordinate through shared
+   checks and a structured cross-project message, never by one dispatcher steering another's
+   workers.
 2. **Separation of making and judging.** Workers make; the gate (machine checks) and the aide
    (independent acceptance on a real environment) judge. The dispatcher and the aide never write
    product code; nobody accepts or merges their own work.
@@ -106,6 +109,8 @@ The methodology is one model, and every change must keep it whole:
    judgment. A lesson that relied on an agent "remembering" is fixed in a script, not a reminder.
 4. **The user's attention is the scarcest resource.** One ask at a time, with the exact screen or
    command ready; routine progress is batched; silence never hides a failure, decision, or risk.
+   The user may speak to any role; only the dispatcher asks the user for anything, so every
+   decision or action the team needs from the user waits in one queue.
 5. **Facts, not screens.** State comes from structured signals (hook-written files, exit codes,
    PR and issue state); no script parses a terminal screen or prose to decide what an agent did.
 6. **Domain-neutral.** The skills and scripts carry no business-domain or vendor-system knowledge

@@ -7,20 +7,23 @@ One project gets one **dispatcher**, one **aide**, and a few **workers**:
 
 | Role | Owns | Never |
 |---|---|---|
-| **Dispatcher** (`/dispatch`) | what is built next, in what order, by whom, and whether it lands; the user's one channel into the project | writes product code, runs acceptance, merges red |
-| **Aide** (`/dispatch-aide`, 副手) | independent end-to-end acceptance on a real environment; the acceptance plan before work starts; test environments and test data | writes product code, judges its own work, merges |
+| **Dispatcher** (`/dispatch`) | what is built next, in what order, by whom, and whether it lands; the only role that asks the user for anything | writes product code, runs acceptance, merges red |
+| **Aide** (`/dispatch-aide`, 副手) | independent end-to-end acceptance on a real environment; the acceptance plan before work starts; test environments and test data; required and resident for all of delivery | writes product code, judges its own work, merges, asks the user except through the dispatcher |
 | **Worker** (`/dispatch-worker`) | one issue, one worktree, one PR, the gate green | merges its own PR, talks to the user |
 
 The model rests on seven rules (see `CONSTITUTION.md`, Article 10):
 
-1. **One project, one dispatcher, one aide.** Sibling projects (say, a macOS and a Windows
-   edition) have sibling teams, each reporting to the user, coordinating through shared checks.
+1. **One project, one dispatcher, one aide.** Both are required and resident for the whole of
+   delivery; automated suites are the aide's tools, not a replacement for it. Sibling projects
+   (say, a macOS and a Windows edition) have sibling teams, each reporting to the user,
+   coordinating through shared checks.
 2. **Making and judging are separate.** Workers make; machine checks and the aide judge.
 3. **Scripts own the mechanics, agents own the judgment.** Watching, wake-ups, start-up checks,
    capacity, environment locks, and head-pinned merges are scripts. A lesson that relied on an
    agent remembering is fixed in a script.
 4. **The user's attention is the scarcest resource.** One ask at a time, with the exact screen
-   ready; routine progress is batched; silence never hides a failure.
+   ready; routine progress is batched; silence never hides a failure. The user may speak to any
+   role, but only the dispatcher asks the user for anything.
 5. **Facts, not screens.** State comes from structured signals — hook-written files, exit codes,
    PR and issue state — never from parsing a terminal screen or prose.
 6. **Domain-neutral.** The skills and scripts carry no business-domain or vendor-system
