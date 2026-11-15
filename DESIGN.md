@@ -66,6 +66,9 @@ agents on real products, and the intent behind it can be read off what that pers
    scouts: research, documents, operations, stakeholder materials — reports, never PRs
 ```
 
+The user may also speak to the aide directly; what the aide records goes back to the dispatcher
+(below).
+
 Decision rights (R = does it, A = decides, C = consulted, I = informed):
 
 | Decision | User | Dispatcher | Aide | Worker |
@@ -82,6 +85,25 @@ Decision rights (R = does it, A = decides, C = consulted, I = informed):
 
 A *grant* is the user's dated, verbatim permission recorded in the project's rules; without one,
 the dispatcher's A becomes an Ask.
+
+**Why the aide is required and resident.** A team of only a dispatcher and workers has nobody
+independent to say whether what landed works: the dispatcher would judge its own landing (P1), and
+"the gate is green" would quietly become "done". Automated end-to-end suites do not remove the
+role; they are the aide's tools, and someone independent of the makers still has to own the
+environments, run the suites against the landed head, judge what a red or flaky result means, and
+clean up the test data. The aide is also resident, not started per request, because its work spans
+the issue: it writes the plan before a worker starts (P5), holds environment locks and sign-ins
+between runs, and must find its own test data to delete it. Its *execution* scales; the role does
+not: first the project's own end-to-end suite, then scripted checks the aide runs, then acceptance
+executors (one per environment). Only the aide gives a verdict.
+
+**When the user speaks to the aide.** The user may talk to the dispatcher or the aide, and often
+will talk to the aide about an environment or a result. The aide answers, records what the user
+said (verbatim, dated) on the issue, and tells the dispatcher, so the records stay whole. A
+decision that belongs to the dispatcher — scope, order, acceptance criteria, landing — the aide
+hands over and does not make: a direct conversation is not a second path around the decision
+rights. Anything the aide needs *from* the user still becomes an Ask through the dispatcher: there
+is one ask queue, so the user never has two open asks from one project.
 
 ## 4. Lifecycle
 
@@ -139,7 +161,8 @@ Every interaction is one of three kinds:
   before it blocks work, and presented one step at a time inside that session.
 
 The dispatcher measures asks per day and time-to-answer, and reports the Do count; a rising Do
-count is a design defect to remove, not a cost to accept.
+count is a design defect to remove, not a cost to accept. The user may start a conversation with
+the dispatcher or the aide (section 3); only the dispatcher sends Asks.
 
 ## 7. Flow metrics (reported briefly at each stage)
 
@@ -154,10 +177,12 @@ count is a design defect to remove, not a cost to accept.
 
 ## 8. Continuity
 
-The dispatcher is a long-lived session and will compact or die. So: the board is regenerated from
-GitHub, open asks are issues labelled `ask`, grants live in the project rules, and at each milestone (or when
-the context is large) the dispatcher **rotates**: it writes a short handover from those records and
-a fresh session continues. A rotation that loses anything is a bug in the records, not in the new
+The dispatcher and the aide are long-lived sessions and will compact or die. So: the board is
+regenerated from GitHub, open asks are issues labelled `ask`, grants live in the project rules,
+acceptance plans and verdicts are issue comments, and at each milestone (or when the context is
+large) each of them **rotates**: it writes a short handover from those records and a fresh session
+continues. The aide's handover also names the environment locks it holds and the test data it has
+not yet deleted. A rotation that loses anything is a bug in the records, not in the new
 session.
 
 ## 9. Sibling projects

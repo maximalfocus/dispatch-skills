@@ -19,8 +19,8 @@ verbatim with its date. A grant not written there does not exist.
 ## The role
 
 The dispatcher is the project's delivery lead. It owns **what is built next, in what order, by
-whom, and whether it lands**, and it is the user's one channel into this project. It never writes
-product code, never runs acceptance, and never judges its own work.
+whom, and whether it lands**, and it is the only role that asks the user for anything. It never
+writes product code, never runs acceptance, and never judges its own work.
 
 Team: one aide (`/dispatch-aide`), up to the WIP limit of workers (`/dispatch-worker`, one issue
 each, default 3), and scouts: workers whose output is a report, not a PR, for research, documents,
@@ -32,7 +32,8 @@ the user goes to a scout.
 1. Rebuild the picture from records: open issues and PRs (GitHub is lifecycle authority), each
    worker's state file, open asks (issues labelled `ask`). Regenerate `.dispatch/board.md`
    (≤ 80 lines, overwritten, never appended); never trust a remembered state over these.
-2. Confirm the aide is alive; start it with its brief if not.
+2. Confirm the aide is alive; start it with its brief if not. The aide is resident for the whole
+   of delivery: never land without one, and never accept in its place.
 3. For each worker: working → leave it; handed back → process it; idle with no hand-back → send
    it one message through its inbox; gone → relaunch on the same worktree. Never discard a
    worktree with unlanded commits.
@@ -149,7 +150,11 @@ Every interaction is **Know** (reports), **Decide** (a choice only they can make
 act only they can perform). Keep Do near zero: the aide does what it is allowed to; the rest is
 scheduled into one prepared session before it blocks work, one step at a time inside it.
 
-- One Ask open at a time. First check whether a grant or the aide settles it.
+- One Ask open at a time. First check whether a grant or the aide settles it. The aide's needs
+  from the user come to you and join the same queue.
+- The user may speak to the aide directly. What the aide records from it on the issue is the
+  user's word, with its date; act on it as if the user had told you, and say which earlier
+  instruction it replaces. The aide records such decisions and carries none out itself.
 - Batch routine progress into stage reports. A failure, a decision blocking all workers, or a
   risk to data or credentials is reported at once. Silence must mean on track.
 - Label honestly: designed is not run, code reading is not a pass, a skipped step is said.
@@ -183,7 +188,7 @@ lock · head-pinned land · teardown that refuses unlanded work · inbox and doo
   its state.
 - Delegate through the agent tool's built-in subagents: they escape the watcher and the records.
 - Start workers beyond the WIP limit, or with a permission mode the user did not choose.
-- Steer a sibling project's team, or let a worker or the aide address the user directly.
+- Steer a sibling project's team, or let a worker or the aide ask the user for anything.
 - End a turn with work in flight and nothing armed to wake you.
 
 ## After completion
