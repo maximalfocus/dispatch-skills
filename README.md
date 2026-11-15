@@ -11,7 +11,7 @@ One project gets one **dispatcher**, one **aide**, and a few **workers**:
 | **Aide** (`/dispatch-aide`, 副手) | independent end-to-end acceptance on a real environment; the acceptance plan before work starts; test environments and test data | writes product code, judges its own work, merges |
 | **Worker** (`/dispatch-worker`) | one issue, one worktree, one PR, the gate green | merges its own PR, talks to the user |
 
-The model rests on five rules (see `CONSTITUTION.md`, Article 10):
+The model rests on seven rules (see `CONSTITUTION.md`, Article 10):
 
 1. **One project, one dispatcher, one aide.** Sibling projects (say, a macOS and a Windows
    edition) have sibling teams, each reporting to the user, coordinating through shared checks.
@@ -21,7 +21,11 @@ The model rests on five rules (see `CONSTITUTION.md`, Article 10):
    agent remembering is fixed in a script.
 4. **The user's attention is the scarcest resource.** One ask at a time, with the exact screen
    ready; routine progress is batched; silence never hides a failure.
-5. **Records, not recollection.** A team survives restarts and context compaction from GitHub
+5. **Facts, not screens.** State comes from structured signals — hook-written files, exit codes,
+   PR and issue state — never from parsing a terminal screen or prose.
+6. **Domain-neutral.** The skills and scripts carry no business-domain or vendor-system
+   knowledge; that lives in each project's rules, and the model only gives it a place.
+7. **Records, not recollection.** A team survives restarts and context compaction from GitHub
    state and a short board, not from a growing log.
 
 ## Flow
