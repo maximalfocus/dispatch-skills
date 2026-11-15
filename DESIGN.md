@@ -295,7 +295,7 @@ delivery model, so only its principles carry over.
 | Its Claude Code hook exits 2 when policy evaluation fails; its LIMITATIONS: with no policies loaded the default is allow, and a dashboard still says "governed" | `role-guard` denies on a missing config or unknown role; `start` confirms a worker only after its guard denied a probe, and Phase 0 sees every role's guard deny once |
 | Its identity spec: scope chains only narrow; delegation never grants more than the delegator holds | Article 8: delegation only narrows, from the user's rules to a Brief to a scout |
 | A 408-line LIMITATIONS document: it governs actions, not reasoning; its audit records attempts, not outcomes | Section 13 states this model's own limits |
-| Cryptographic agent identity, trust scores, privilege rings, a Merkle audit chain, SDKs in five languages; its README says most teams run only policy enforcement and audit logging, and its LIMITATIONS calls the full stack overkill for simple use cases | Not adopted: every role posts as the user's gh login and GitHub is the record; generic command safety (destructive commands, secrets, network) is left to such a tool run alongside |
+| Cryptographic agent identity, trust scores, privilege rings, a Merkle audit chain, SDKs in five languages; its README says most teams run only policy enforcement and audit logging, and its LIMITATIONS says the full stack may be overkill for simple use cases | Not adopted: every role posts as the user's gh login and GitHub is the record; generic command safety (destructive commands, secrets, network) is left to such a tool run alongside |
 
 ## 12. Mechanics contracts
 
