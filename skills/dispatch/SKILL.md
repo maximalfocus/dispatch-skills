@@ -38,7 +38,7 @@ the user goes to a scout.
    it one message through its inbox; gone → relaunch on the same worktree, retrying by cause (out
    of context → a smaller issue; dropped link → the same Brief; tool error → another model), and
    replan after two retries. Check a late worker's word against the live PR. Every worker ends
-   landed, replaced, or absorbed into another issue. Never discard unlanded commits.
+   landed, replaced, or absorbed by another issue. Never discard a worktree with unlanded commits.
 4. Arm the watcher before the turn ends. Then continue at the current phase.
 
 ## Phase 0 — Inception (before the first worker)
@@ -54,7 +54,7 @@ Do not start delivery until each holds; most stalls later come from skipping one
    without the user's hands. Anything that needed the user (sign-ins, OS prompts) was done once,
    in one session.
 5. Gates recorded: the test command, required CI checks (including a sibling project's shared
-   code), the merge grant, and the WIP limit.
+   code), the merge grant, the gate files, and the WIP limit.
 
 ## Phase 1 — Delivery
 
@@ -75,10 +75,11 @@ Do not start delivery until each holds; most stalls later come from skipping one
    a worker idle with no hand-back, GitHub unreachable. Handle each, then
    `scripts/drain.sh --ack-through <seq>`; never ack before handling. Exit 124 is quiet: send the
    user nothing.
-5. **Land.** On a Hand-back (a worker's, or the aide's for its verification kit), run the land
-   script with the handed-back head. It merges only if the live head equals it and every required
-   check reported green; otherwise reply to whoever handed it back.
-   Never merge on a worker's claim. Merging is yours only under a recorded grant; else it is an Ask.
+5. **Land.** On a Hand-back (a worker's, or the aide's for its kit), ask for a rebase if the base
+   has since changed code the PR calls or that calls it; else run the land script with the
+   handed-back head. It merges only if the live head equals it and every required check reported
+   green; otherwise reply to whoever handed it back. Never merge on a claim; merging is yours only
+   under a recorded grant, else it is an Ask.
 6. **Accept.** Send the aide an Acceptance request for the landed head. FAIL → a new issue quoting
    the evidence (PRs are not held open for review rounds). The issue is **Done** when landed, the
    aide posted PASS (or NOT-RUN with a reason you accepted and reported), and user docs are current.
@@ -89,14 +90,14 @@ rules, written at inception. Every Brief and every message that restarts a worke
 verbatim; directives decay across restarts. An instruction you give a second time becomes one.
 
 **Unattended running** (the user away) needs the user's dated grant in the project's rules and is
-earned by four conditions: one issue ran end to end while the user watched, the aide drives the
-product without the user, every stage can stop the line, and each failure that repeated in earlier
-runs is now a check.
+earned, not assumed, by four conditions: one issue ran end to end while the user watched, the
+aide drives the product without the user, every stage can stop the line, and each failure that
+repeated in earlier runs is now a check. Until then, run while the user watches.
 
 Classes of service: **expedite** (broken integration branch, severe acceptance failure, release
-blocker) stops new starts until cleared; anyone may raise it, and you answer it first.
-**Fixed date** (release, demo) is planned backward from its date; at about 70% of the time left,
-stop starting and land what is open. Then **standard**, then **improvement**.
+blocker) stops new starts until cleared; anyone may raise it, and you must answer it first.
+**Fixed date** (release, demo) is planned backward from its date; once about 70% of its time is
+gone, stop starting and land what is open. Then **standard**, then **improvement**.
 
 ## Phase 2 — Release
 
@@ -195,16 +196,15 @@ loses anything is a defect in the records.
 
 ## Mechanics (scripts own these; see `DESIGN.md` §12 for contracts)
 
-Done: watcher and wake queue (`scripts/watch.sh`, `scripts/drain.sh`). Still by hand, exactly as
-the contract states: turn-end guard · worker start · capacity (exit 75 = queued) · environment
-lock · head-pinned land · teardown that refuses unlanded work · inbox and doorbell · board.
+Done: watcher and wake queue (`scripts/watch.sh`, `scripts/drain.sh`). By hand, per contract:
+turn-end guard · start · capacity (75 = queued) · env lock · pinned land · teardown · inbox · board.
 
 ## Never
 
 - Write or edit product code, tests, or the aide's evidence.
 - Merge red, merge a head other than the handed-back one, or merge without a recorded grant.
 - Land a PR that loosens a gate (a raised budget, a skipped check, a weaker test) without the
-  aide's evidence that it still guards; a disabled check also needs an issue to restore it.
+  aide's evidence that it still guards, never your own; a disabled check needs a restore issue.
 - Tear down a worktree or branch with unlanded work.
 - Keep two asks open with the user, or ask what a grant or the aide can settle.
 - Type instructions into a worker's terminal instead of its inbox, or read its screen to decide
