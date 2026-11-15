@@ -14,6 +14,7 @@ git -C "$repo" init -q
 cat > "$fake/gh" <<'EOF'
 #!/usr/bin/env bash
 case "$*" in
+  *api\ user*) echo alice ;;
   *issues/comments*) cat "$FAKE/comments.json" ;;
   *pulls*) cat "$FAKE/pulls.json" ;;
   *) echo "fake gh: unexpected: $*" >&2; exit 1 ;;
@@ -25,10 +26,10 @@ export FAKE="$fake" DISPATCH_GH="$fake/gh" DISPATCH_REPO=o/r DISPATCH_POLL=0
 st="$repo/.dispatch/state"
 watch() { (cd "$repo" && "$here/watch.sh" --once "$@"); }
 drain() { (cd "$repo" && "$here/drain.sh" "$@"); }
-comment() {  # id body [author_association]
-  jq -n --argjson id "$1" --arg b "$2" --arg a "${3:-OWNER}" \
+comment() {  # id body [author_association] [user.login]
+  jq -n --argjson id "$1" --arg b "$2" --arg a "${3:-OWNER}" --arg l "${4:-alice}" \
     '{id: $id, body: $b, html_url: "https://x/c/\($id)", author_association: $a,
-      updated_at: "2026-11-14T00:00:0\($id % 10)Z"}'
+      user: {login: $l}, updated_at: "2026-11-14T00:00:0\($id % 10)Z"}'
 }
 comments() { jq -s . > "$fake/comments.json"; }
 
@@ -107,25 +108,33 @@ watch >/dev/null 2>"$tmp/err8"; rc=$?
 check "bad worker state file survives" '[ "$rc" -eq 124 ] && grep -q "no idle epoch" "$tmp/err8"'
 rm -f "$st/workers/w20.state"
 
-# 9. Only comments whose author has write access count; an outsider's line is noted once.
+# 9. Trust is identity first, association second; an outsider's line is noted once.
 echo '[]' > "$fake/pulls.json"
-comment 60 "HANDBACK issue=#9 pr=#30 head=f00d status=done" NONE | comments
+# (a) association: a collaborator who is not the gh login still wakes.
+comment 60 "ACCEPT issue=#9 head=aaaa verdict=PASS evidence=x" COLLABORATOR carol | comments
+out=$(watch); check "a COLLABORATOR wakes" 'has "verdict ACCEPT issue=#9"'
+drain --ack-through 999 >/dev/null
+# (b) identity: the login gh posts as is trusted even as a bare org member.
+comment 61 "HANDBACK issue=#9 pr=#30 head=f00d status=done" MEMBER alice | comments
+out=$(watch); check "the gh login wakes as a MEMBER" 'has f00d'
+drain --ack-through 999 >/dev/null
+# (c) another member's line is data: no wake, no row, one note.
+comment 62 "HANDBACK issue=#9 pr=#31 head=beef status=done" MEMBER mallory | comments
 out=$(watch 2>"$tmp/err9"); rc=$?
-check "untrusted hand-back never wakes" '[ "$rc" -eq 124 ] && ! has f00d'
-check "no hand-back was recorded" '! grep -q f00d "$st/handbacks"'
-check "the outsider is noted once" 'grep -q "comment 60" "$tmp/err9"'
-out=$(watch 2>"$tmp/err9b"); check "the note does not repeat" '! grep -q "comment 60" "$tmp/err9b"'
-comment 61 "ACCEPT issue=#9 head=aaaa verdict=PASS evidence=x" COLLABORATOR | comments
-out=$(watch); check "a trusted verdict still wakes" 'has "verdict ACCEPT issue=#9"'
+check "another MEMBER's hand-back never wakes" '[ "$rc" -eq 124 ] && ! has beef'
+check "no hand-back was recorded" '! grep -q beef "$st/handbacks"'
+check "the outsider is noted once" 'grep -q "comment 62" "$tmp/err9"'
+out=$(watch 2>"$tmp/err9b"); check "the note does not repeat" '! grep -q "comment 62" "$tmp/err9b"'
+# (d) DISPATCH_TRUSTED_LOGINS replaces the default identity, case-insensitively.
+out=$( cd "$repo" && DISPATCH_TRUSTED_LOGINS="Mallory" "$here/watch.sh" --once 2>/dev/null )
+check "a configured login is trusted" 'has beef'
 drain --ack-through 999 >/dev/null
-# A bare org member is not write access: trusted only when the default is widened.
-comment 62 "HANDBACK issue=#9 pr=#31 head=beef status=done" MEMBER | comments
-out=$(watch 2>"$tmp/err9c"); rc=$?
-check "a MEMBER is untrusted by default" '[ "$rc" -eq 124 ] && ! has beef'
-out=$( cd "$repo" && DISPATCH_TRUSTED_AUTHORS="OWNER COLLABORATOR MEMBER" \
-  "$here/watch.sh" --once )
-check "a MEMBER is admitted when configured" 'has beef'
-drain --ack-through 999 >/dev/null
+comment 63 "HANDBACK issue=#9 pr=#32 head=cafe status=done" MEMBER alice | comments
+out=$( cd "$repo" && DISPATCH_TRUSTED_LOGINS="mallory" "$here/watch.sh" --once 2>/dev/null ); rc=$?
+check "the replaced list no longer trusts the gh login" '[ "$rc" -eq 124 ]'
+# (e) no login and no override: refuse to run rather than go deaf.
+( cd "$repo" && DISPATCH_GH=/bin/false "$here/watch.sh" --once ) >/dev/null 2>"$tmp/err9e"; rc=$?
+check "an unknown login exits 1" '[ "$rc" -eq 1 ] && grep -q DISPATCH_TRUSTED_LOGINS "$tmp/err9e"'
 
 # 10. Reclaiming a dead holder runs under the steal mutex, so a second starter cannot steal.
 rm -rf "$st/watch.lock" "$st/watch.mutex"; mkdir -p "$st/watch.lock" "$st/watch.mutex"

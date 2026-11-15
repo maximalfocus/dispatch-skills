@@ -11,14 +11,15 @@
 #   idle      a worker idle ≥ DISPATCH_IDLE_SECS (300) with no hand-back in the 5 min before it
 #             went idle; worker files are workers/<id>.state = "<busy|idle> <epoch> <issue>"
 #   error     GitHub unreachable for 20 polls in a row       key error:github:<hour>
-# A comment counts only when its author has write access: `author_association` must be in
-# DISPATCH_TRUSTED_AUTHORS (default "OWNER COLLABORATOR"; an org that trusts its members adds
-# MEMBER). Anyone else's HANDBACK or ACCEPT line is data, not an event: it is noted once on stderr
-# and never wakes the dispatcher (Article 8).
+# A comment counts when its author login is in DISPATCH_TRUSTED_LOGINS (default: the login gh
+# posts as, read once from `gh api user`) or its author_association is in DISPATCH_TRUSTED_AUTHORS
+# (default "OWNER COLLABORATOR"). Anyone else's HANDBACK or ACCEPT line is data, not an event: it is
+# noted once on stderr and never wakes the dispatcher (Article 8). A watcher that cannot tell which
+# login it posts as, and was given no DISPATCH_TRUSTED_LOGINS, exits 1 rather than run blind.
 # Exit: 0 wakes queued (printed with the ack command) · 124 quiet until --once or --seconds ran
 #       out · 3 another watcher holds this project · 1 error.
 # Env: DISPATCH_POLL (15 s), DISPATCH_IDLE_SECS, DISPATCH_REPO (owner/name), DISPATCH_GH (gh),
-#      DISPATCH_TRUSTED_AUTHORS (space-separated author_association values that may wake you).
+#      DISPATCH_TRUSTED_LOGINS (logins), DISPATCH_TRUSTED_AUTHORS (author_association values).
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 # shellcheck source=lib.sh
@@ -43,6 +44,16 @@ esac
 command -v jq >/dev/null || { echo "watch: jq is required" >&2; exit 1; }
 st=$(ds_state) || exit 1
 repo=${DISPATCH_REPO:-$($gh repo view --json nameWithOwner --jq .nameWithOwner)} || exit 1
+# Identity first: the team posts with this account, so its login is trusted before any association.
+trusted_logins=${DISPATCH_TRUSTED_LOGINS:-}
+if [ -z "$trusted_logins" ]; then
+  trusted_logins=$($gh api user --jq .login 2>/dev/null) || trusted_logins=
+  case $trusted_logins in
+    ''|null) echo "watch: cannot tell which login gh posts as; set DISPATCH_TRUSTED_LOGINS" >&2
+      exit 1 ;;
+  esac
+fi
+trusted_logins=$(printf '%s' "$trusted_logins" | tr '[:lower:]' '[:upper:]')
 
 # One watcher per project. The steal mutex serialises the check-remove-create below: without it two
 # starters that both see a dead holder can remove the lock each other just re-created.
@@ -73,12 +84,17 @@ poll_comments() {  # queue HANDBACK/ACCEPT lines; record hand-backs tab-separate
     "repos/$repo/issues/comments?since=$since&sort=updated&direction=asc&per_page=100") || return 1
   printf '%s' "$json" | jq -e 'type == "array"' >/dev/null 2>&1 || return 1
   # odd JSON must fail here, before the cursor moves, or that comment's hand-back is lost.
-  rows=$(printf '%s' "$json" | jq -r --arg trusted "$trusted" '.[] | . as $c
+  rows=$(printf '%s' "$json" |
+    jq -r --arg trusted "$trusted" --arg logins "$trusted_logins" '.[] | . as $c
       | (.body | if type == "string" then . else "" end) as $body
       | [$body | split("\n")[] | sub("\r$"; "") | select(test("^(HANDBACK|ACCEPT) "))][0] // empty
       | (($c.author_association // "") | if type == "string" then ascii_upcase else "" end) as $who
+      | (($c.user | if type == "object" then .login else "" end) // "") as $login
+      | ($login | if type == "string" then ascii_upcase else "" end) as $by
       | [($c.id | tostring), ., (($c.html_url // "") | tostring),
-         (if ($trusted | split(" ") | index($who)) != null then "yes" else "no" end)]
+         (if ($who != "" and ($trusted | split(" ") | index($who)) != null)
+              or ($by != "" and ($logins | split(" ") | index($by)) != null)
+          then "yes" else "no" end)]
       | @tsv') || return 1
   [ -z "$rows" ] ||
   printf '%s\n' "$rows" |

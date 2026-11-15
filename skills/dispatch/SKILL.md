@@ -63,8 +63,8 @@ Do not start delivery until each holds; most stalls later come from skipping one
    Start the worker with the start script; it pre-registers folder trust and confirms the worker
    went busy from its hook file. A start that is not confirmed is a failed start, not a worker.
 4. **Watch.** Run `scripts/watch.sh` (beside this skill) in the project; it exits 0 with
-   wakes: a Hand-back or an aide verdict from someone with write access, a handed-back PR whose
-   head moved, a worker idle with no hand-back, GitHub unreachable. Handle each, then
+   wakes: a Hand-back or an aide verdict from your own gh login, a handed-back PR whose head moved,
+   a worker idle with no hand-back, GitHub unreachable. Handle each, then
    `scripts/drain.sh --ack-through <seq>`; never ack before handling. Exit 124 is quiet: send the
    user nothing.
 5. **Land.** On a Hand-back, run the land script with the handed-back head. It merges only if the
