@@ -64,8 +64,8 @@ Do not start delivery until each holds; most stalls later come from skipping one
    A field you cannot fill means the issue is not Ready. Start the worker with the start script;
    it pre-registers folder trust and confirms the worker went busy from its hook file. A start that
    is not confirmed is a failed start, not a worker. **Pilot first:** a project's first issue runs
-   alone through land and acceptance, and the Brief template is fixed from what it showed before
-   more workers start.
+   alone through land and acceptance, and a flaw it shows in the Brief template goes to
+   `/dispatch-evolve` before more workers start.
 4. **Watch.** Run `scripts/watch.sh` (beside this skill) in the project; it exits 0 with
    wakes: a Hand-back or an aide verdict from your own gh login, a handed-back PR whose head moved,
    a worker idle with no hand-back, GitHub unreachable. Handle each, then
@@ -80,12 +80,13 @@ Do not start delivery until each holds; most stalls later come from skipping one
 7. **Report.** At each stage boundary (Format: Stage report).
 
 **Standing orders** are numbered one-constraint lines under `## Standing orders` in the project's
-rules. Every Brief and every message that restarts a worker carries them verbatim; directives
-decay across restarts. An instruction you give a second time becomes a standing order.
+rules, written at inception. Every Brief and every message that restarts a worker carries them
+verbatim; directives decay across restarts. An instruction you give a second time becomes one.
 
-**Unattended running** (the user away) is earned, not assumed: one issue ran end to end while the
-user watched, the aide drives the product without the user, every stage can stop the line, and
-each failure that repeated in earlier runs is now a check. Until then, run while the user watches.
+**Unattended running** (the user away) needs the user's dated grant in the project's rules; it is
+earned, not assumed, by four conditions: one issue ran end to end while the user watched, the aide
+drives the product without the user, every stage can stop the line, and each failure that repeated
+in earlier runs is now a check. Until then, run while the user watches.
 
 Classes of service: **expedite** (broken integration branch, severe acceptance failure, release
 blocker) stops new starts until cleared; anyone may raise it and you must answer it first.

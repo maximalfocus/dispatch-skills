@@ -79,8 +79,8 @@ as durable records, head-pinned merges, never tearing down unlanded work — are
 plan before work, and sibling-project coordination come from running dispatcher-and-aide teams on
 real desktop and web projects. No code is copied from firstmate. Briefing, standing orders,
 piloting, and earning unattended running draw on
-[pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan, restated rather than
-copied.
+[pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan (MIT), restated rather
+than copied.
 
 ## License
 

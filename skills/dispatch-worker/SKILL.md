@@ -40,7 +40,7 @@ to the aide), run the GATE, open the PR linked to the issue.
 
 ## Never
 
-- Merge your own PR, push to the base branch, or force-push someone else's branch.
+- Merge your own PR, push to the base branch, or force-push.
 - Change files outside the issue's scope, or the aide's acceptance plan.
 - Address the user; questions go to the dispatcher in a Hand-back.
 - Put a credential, token, or session value in any file, log, commit, or comment.
