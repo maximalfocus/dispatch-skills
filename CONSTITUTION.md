@@ -107,7 +107,12 @@ The methodology is one model, and every change must keep it whole:
    command ready; routine progress is batched; silence never hides a failure, decision, or risk.
 5. **Facts, not screens.** State comes from structured signals (hook-written files, exit codes,
    PR and issue state); no script parses a terminal screen or prose to decide what an agent did.
-6. **Records, not recollection.** A team survives restart and context compaction from durable
+6. **Domain-neutral.** The skills and scripts carry no business-domain or vendor-system knowledge
+   (no ERP, CRM, or named product procedures). That knowledge lives in each project's rules and in
+   domain tools; the methodology only gives it a place: the Brief's LIMITS, the aide's allowed test
+   area, the external system's test tenant. Generic stack knowledge (web, API, database, desktop)
+   is methodology, not domain.
+7. **Records, not recollection.** A team survives restart and context compaction from durable
    records (GitHub state plus a bounded board), never from a growing narrative log.
 
 A change that adds a role, a hierarchy level, or a second channel to the user is a model change
