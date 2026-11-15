@@ -62,8 +62,11 @@ Do not start delivery until each holds; most stalls later come from skipping one
 3. **Brief and start.** Write the Brief (format below) with the WHY: the core need this serves.
    Start the worker with the start script; it pre-registers folder trust and confirms the worker
    went busy from its hook file. A start that is not confirmed is a failed start, not a worker.
-4. **Watch.** The watcher wakes you on facts: a Hand-back, a PR head change, an aide verdict, a
-   worker idle with no hand-back. Nothing else. A quiet tick sends nothing to the user.
+4. **Watch.** Run `scripts/watch.sh` (beside this skill) in the project; it exits 0 with
+   wakes: a Hand-back or an aide verdict from your own gh login, a handed-back PR whose head moved,
+   a worker idle with no hand-back, GitHub unreachable. Handle each, then
+   `scripts/drain.sh --ack-through <seq>`; never ack before handling. Exit 124 is quiet: send the
+   user nothing.
 5. **Land.** On a Hand-back, run the land script with the handed-back head. It merges only if the
    live head equals it and every required check reported green; otherwise reply to the worker.
    Never merge on a worker's claim. Merging is yours only under a recorded grant; else it is an Ask.
@@ -166,9 +169,9 @@ loses anything is a defect in the records.
 
 ## Mechanics (scripts own these; see `DESIGN.md` §12 for contracts)
 
-Watcher and wake queue · turn-end guard · worker start · capacity (exit 75 = queued) · environment
-lock · head-pinned land · teardown that refuses unlanded work · inbox and doorbell · board. Until a
-script exists, do the same check by hand, exactly as its contract states.
+Done: watcher and wake queue (`scripts/watch.sh`, `scripts/drain.sh`). Still by hand, exactly as
+the contract states: turn-end guard · worker start · capacity (exit 75 = queued) · environment
+lock · head-pinned land · teardown that refuses unlanded work · inbox and doorbell · board.
 
 ## Never
 
