@@ -46,7 +46,8 @@ Do not start delivery until each holds; most stalls later come from skipping one
 1. A requirements source exists, with the end customer's core needs as a short list.
 2. A design baseline: architecture, design tokens or system, data and integration boundaries
    (a scout drafts; the user approves the parts that are theirs to decide).
-3. The aide's acceptance strategy: environments, end-to-end approach per stack, risk tiers.
+3. The aide's acceptance strategy: environments, end-to-end approach per stack, risk tiers, and
+   the model family it judges on.
 4. Environment readiness: the aide's verification kit has run end to end on every environment
    without the user's hands. Anything that needed the user (sign-ins, OS prompts) was done once,
    in one session.
@@ -72,8 +73,9 @@ Do not start delivery until each holds; most stalls later come from skipping one
    a worker idle with no hand-back, GitHub unreachable. Handle each, then
    `scripts/drain.sh --ack-through <seq>`; never ack before handling. Exit 124 is quiet: send the
    user nothing.
-5. **Land.** On a Hand-back, run the land script with the handed-back head. It merges only if the
-   live head equals it and every required check reported green; otherwise reply to the worker.
+5. **Land.** On a Hand-back (a worker's, or the aide's for its verification kit), run the land
+   script with the handed-back head. It merges only if the live head equals it and every required
+   check reported green; otherwise reply to whoever handed it back.
    Never merge on a worker's claim. Merging is yours only under a recorded grant; else it is an Ask.
 6. **Accept.** Send the aide an Acceptance request for the landed head. FAIL → a new issue quoting
    the evidence (PRs are not held open for review rounds). The issue is **Done** when landed, the

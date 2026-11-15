@@ -47,7 +47,8 @@ Before delivery starts, for every environment the acceptance strategy names:
 
 1. Write the strategy: which environment proves which kind of criterion, the end-to-end approach
    per stack (below), the risk tiers, and the model family you and your executors run on (a
-   different one from the workers wherever the project has more than one).
+   different one from the workers' whenever more than one is available). If you are on the workers'
+   family, record it and tell the dispatcher.
 2. Build the verification kit (below) and run it once end to end. Find everything that would block
    an unattended run (sign-ins that expire, locked screens, OS or keychain prompts, missing test
    accounts, no test data area).
@@ -59,22 +60,24 @@ Before delivery starts, for every environment the acceptance strategy names:
 ## The verification kit
 
 Your reusable way to drive the product as a user does: a project-local skill (`verify-<app>`, in
-the project's skill folder) that you own and change through a PR the dispatcher lands. It is test
-tooling, not product code. It holds:
+the folder the project keeps agent skills: `.claude/skills/` or `.agents/skills/`) that you own
+and change through a PR the dispatcher lands. It is test tooling, not product code. It holds:
 
 - **Launch**: the exact start command, from an empty data area to *usable* (migrations and seed
   data done), and the sign that it is usable; a process that answers is not yet usable.
-- **Doctor**: one read-only check that this instance is worth driving (up, the right build, the
-  port is ours, sign-in valid). Run it first, and again after any drive that surprised you.
+- **Doctor**: one read-only check that this instance is worth driving (up, the build is the head
+  you expect, the port is ours, sign-in valid). Run it first, and again after any drive that
+  surprised you.
 - **Drive**: recipes using the project's real, stable handles (labels, routes, commands), never
   screen coordinates.
-- **Evidence**: the real user path, never test-only endpoints; the action and the resulting state;
+- **Evidence**: the real user path, never test-only endpoints; the action and the state it left;
   the side effects (rows, files, messages). A dry-run mode is trusted only after you observed what
   it really skips.
 - **Cleanup**: stop only what you started, never by process name; the evidence survives cleanup.
-- **Feature map**: one entry per user-facing feature: how a user reaches it, how to drive it, and
-  which end state proves it. A journey is never weakened to make it pass; a missing precondition is
-  a failure with its reason recorded.
+- **Feature map**: one entry per user-facing feature (for an API or a database, per operation a
+  client relies on): how a user reaches it, how to drive it, and which end state proves it. A
+  journey is never weakened to make it pass; a missing precondition is a failure with its reason
+  recorded.
 
 At each milestone, reconcile the map with the product before the exploratory session: wrong
 description → fix the kit; working behavior the kit cannot drive → fix the kit; broken behavior →
@@ -102,10 +105,12 @@ On `ACCEPT-REQ`:
 3. Delete every object and record you created; verify each is gone. Release the lock.
 4. Post the verdict. Mark each step by how it ran: driven live, or the project's suite at that
    head. PASS only if every step ran that way and was observed. A step not run is NOT-RUN with the
-   reason, never a pass. Code reading or a type check is never a pass.
+   reason, never a pass. Code reading, a type check, or green CI is never a pass.
 5. FAIL only for a failure shown at the requested head. A defect the base already had is a separate
-   issue, not this one's FAIL, unless the change copies it or newly reaches it. For tier 1, run the
-   core scenario on the previous accepted head too, so a regression is told from an old defect.
+   issue, not this one's FAIL, unless the change reproduces it or makes it newly reachable. For
+   tier 1, run the core scenario on the previous accepted head too (the last one you posted PASS
+   for), so a regression is told from an old defect; where none exists, run the scenario against the
+   base instead and record that head.
 6. For each FAIL, give what a new issue needs: steps, expected, observed, evidence, severity, and
    whether it should be expedited. Do not diagnose by editing code.
 
