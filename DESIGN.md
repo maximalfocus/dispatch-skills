@@ -116,7 +116,8 @@ is one ask queue, so the user never has two open asks from one project.
    without the user's hands (sign-ins persisted, OS prompts cleared, test data area agreed).
 5. Gates: the test command, required CI checks (including any sibling project's shared code), and
    the merge grant are recorded.
-6. Team rules written: grants, data and credential limits, stakeholder rules, WIP limit.
+6. Team rules written: grants, data and credential limits, stakeholder rules, WIP limit,
+   standing orders.
 
 **Phase 1 — Delivery** (flow). Each issue moves:
 `ready → in progress → handed back → landed → accepted` (or `→ failed`, which files a new issue).
@@ -124,6 +125,24 @@ An issue is **Ready** when its acceptance criteria are observable, the aide's pl
 its dependencies have landed, and the environment it needs exists. It is **Done** when the gate
 is green, it has landed at the handed-back head, the aide has posted PASS (or NOT-RUN with a reason
 the dispatcher accepted and reported), and user-facing docs are updated.
+
+**The Brief is the dispatcher's product.** A worker cannot ask a question mid-task without
+stopping, and cannot see its siblings, so the Brief carries everything it would otherwise guess:
+the WHY, the acceptance bar, pointers plus every upstream Hand-back it depends on in full, what it
+may write, what it must never do, a timebox that turns a stall into a hand-back, and the project's
+standing orders. A field the dispatcher cannot fill is a sign the issue is not scoped yet, so it is
+not Ready. Standing orders exist because instructions given in conversation decay each time an
+agent restarts or compacts; written once as numbered lines in the project's rules and carried in
+every Brief, they cost nothing to repeat.
+
+**Pilot, then fan out; earn unattended running.** The first issue of a project runs alone through
+brief, land, and acceptance. It tests the Brief template, the gate, the acceptance plan, and the
+issue size while a flaw costs one worker, not three. Running while the user is away is the last
+step of a trust curve, not the default: the user's dated grant in the project's rules must allow
+it, and it is earned by four conditions: one issue run end to end while the user watched, an aide
+that drives the product without the user, a stop-the-line at every stage, and every failure that
+repeated in earlier runs turned into a check. A loop that has not earned trust only produces
+unchecked work faster.
 
 Classes of service: **expedite** (broken integration branch, a severe acceptance failure, a
 release blocker — stops new starts until cleared), **fixed date** (release, demo), **standard**,
@@ -205,7 +224,7 @@ have a full team and report to the user separately. Between them:
 - An unlimited worker count. WIP is a recorded limit the user can raise.
 - Per-vendor adapters in the skills. Runtime details live in scripts.
 
-## 11. Lessons taken from firstmate, and costs avoided
+## 11. Lessons from firstmate and pstack, and costs avoided
 
 [firstmate](https://github.com/kunchenguid/firstmate) proved most of the supervision ideas this
 model uses. Its history (about 1,200 commits in five months) also shows what they cost when left
@@ -223,6 +242,18 @@ unbounded; each row is a rule here.
 | "Done" means the PR gate passed; no test environments, data, or stakeholder in its contract | Done needs the aide's acceptance on a real environment; the aide owns environments and test data |
 | One funnel: every outcome passes through one first mate and a tree of secondmates | Sibling projects have sibling teams that each report to the user |
 | Two reverts against 760 fixes; a deprecated shim kept 83 days | Deletion counts as progress; a superseded mechanism is deleted in the same change |
+
+[pstack](https://github.com/cursor/plugins/tree/main/pstack) (Lauren Tan, MIT) runs fleets of
+coding agents through playbooks for orchestration, autopilot queues, and landing. Its ideas are
+restated here in this model's terms; no text is copied.
+
+| pstack evidence | Rule in dispatch-skills |
+|---|---|
+| Orchestrate's brief template until October 2026: if the coordinator cannot fill a field, the unit is not scoped; upstream reports are pasted in full because a worker cannot see its siblings | The Brief carries CONTEXT, FORBIDDEN, TIMEBOX, and STANDING; an unfillable field means not Ready |
+| Its standing-orders register until October 2026: carried verbatim at every spawn and resume, because directives decay between restarts and each lost one costs the user a turn | Standing orders in the project's rules, carried verbatim in every Brief and restart |
+| A pilot unit through the whole path before fan-out, so a flawed brief costs one agent | The first issue runs alone; the template is fixed before more workers start |
+| The overnight guide: trust is earned before a loop runs alone | Unattended running needs a recorded grant and the four conditions in section 4 |
+| In October 2026 it deleted ~3,000 lines of orchestration scripts, including the bookkeeping store that mirrored forge state | GitHub stays the authority; scripts check facts and keep no second copy of the project |
 
 ## 12. Mechanics contracts
 

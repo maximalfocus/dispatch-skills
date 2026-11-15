@@ -77,7 +77,10 @@ The supervision ideas — scripts owning mechanics, the human as default authori
 as durable records, head-pinned merges, never tearing down unlanded work — are learned from
 [firstmate](https://github.com/kunchenguid/firstmate) by Kun Chen. The aide role, the acceptance
 plan before work, and sibling-project coordination come from running dispatcher-and-aide teams on
-real desktop and web projects. No code is copied from firstmate.
+real desktop and web projects. No code is copied from firstmate. Briefing, standing orders,
+piloting, and earning unattended running draw on
+[pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan (MIT), restated rather
+than copied.
 
 ## License
 
