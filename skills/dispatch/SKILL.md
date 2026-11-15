@@ -75,8 +75,8 @@ Do not start delivery until each holds; most stalls later come from skipping one
    a worker idle with no hand-back, GitHub unreachable. Handle each, then
    `scripts/drain.sh --ack-through <seq>`; never ack before handling. Exit 124 is quiet: send the
    user nothing.
-5. **Land.** On a Hand-back (a worker's, or the aide's for its kit), ask for a rebase if the base
-   has since changed code the PR calls or that calls it; else run the land script with the
+5. **Land.** On a Hand-back (a worker's, or the aide's for its kit), ask for an update from the base
+   if it has since changed code the PR calls or that calls it; else run the land script on the
    handed-back head. It merges only if the live head equals it and every required check reported
    green; otherwise reply to whoever handed it back. Never merge on a claim; merging is yours only
    under a recorded grant, else it is an Ask.

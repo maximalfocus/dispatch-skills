@@ -36,7 +36,9 @@ to the aide), run the GATE, open the PR linked to the issue.
    push what is done and hand back `status=blocked` with what remains.
 6. Messages from the dispatcher arrive in your inbox (the one line in your terminal says where).
    Handle them in order and acknowledge each as the inbox instructs; for a red check or an
-   out-of-scope change, fix, re-run the gate, and post a new Hand-back with the new head.
+   out-of-scope change, fix, re-run the gate, and post a new Hand-back with the new head. Asked to
+   update from the base, merge the base into your branch (never rebase or force-push), and do the
+   same.
 
 ## Never
 
