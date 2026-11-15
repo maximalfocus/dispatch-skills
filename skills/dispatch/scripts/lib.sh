@@ -39,6 +39,7 @@ ds_clean() {  # untrusted text -> one printable fact: no tabs/newlines, no C0 co
 }
 
 ds_trim() {  # keep a key file bounded; keys only need to outlive their events
+  [ -f "$1" ] || return 0  # nothing recorded yet is normal, not an error
   [ "$(wc -l < "$1")" -gt 6000 ] || return 0
   tail -n 5000 "$1" > "$1.tmp" && mv "$1.tmp" "$1"
 }

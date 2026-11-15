@@ -22,6 +22,9 @@ esac
 EOF
 chmod +x "$fake/gh"
 echo '[]' > "$fake/comments.json"; echo '[]' > "$fake/pulls.json"
+# Hermetic: the operator's own dispatch environment must not decide the outcome.
+unset DISPATCH_STATE DISPATCH_IDLE_SECS DISPATCH_TRUSTED_LOGINS DISPATCH_TRUSTED_AUTHORS \
+  DISPATCH_REPO DISPATCH_GH DS_LOCK_TRIES
 export FAKE="$fake" DISPATCH_GH="$fake/gh" DISPATCH_REPO=o/r DISPATCH_POLL=0
 st="$repo/.dispatch/state"
 watch() { (cd "$repo" && "$here/watch.sh" --once "$@"); }
@@ -37,6 +40,13 @@ comments() { jq -s . > "$fake/comments.json"; }
 comment 1 "HANDBACK issue=#9 pr=#10 head=aaa111 status=done" | comments
 watch >/dev/null; rc=$?
 check "first run is quiet" '[ "$rc" -eq 124 ]'
+comment 11 "just a note, no hand-back" | comments
+watch >/dev/null 2>"$tmp/err1"; rc=$?
+check "a comment with no event line is quiet" '[ "$rc" -eq 124 ]'
+check "a quiet tick writes nothing to stderr" '[ ! -s "$tmp/err1" ]'
+out=$(drain --ack-through 5 2>"$tmp/errd"); rc=$?
+check "an ack before any queue file is clean" \
+  '[ "$rc" -eq 0 ] && [ ! -s "$tmp/errd" ] && printf "%s" "$out" | grep -q "0 left"'
 check "state excluded from git" 'grep -qxF /.dispatch/ "$repo/.git/info/exclude"'
 check "status clean" '[ -z "$(git -C "$repo" status --porcelain)" ]'
 
@@ -55,10 +65,16 @@ watch >/dev/null; rc=$?
 check "acknowledged wake does not return" '[ "$rc" -eq 124 ]'
 drain >/dev/null; rc=$?; check "drain on empty queue exits 124" '[ "$rc" -eq 124 ]'
 
-# 3. A verdict wakes.
-comment 4 "ACCEPT issue=#9 head=aaa111 verdict=FAIL evidence=x" | comments
+# 3. A verdict wakes; --ack-through N removes only seq <= N.
+{ comment 4 "ACCEPT issue=#9 head=aaa111 verdict=FAIL evidence=x";
+  comment 5 "ACCEPT issue=#9 head=aaa111 verdict=PASS evidence=y"; } | comments
 out=$(watch); check "verdict wakes" 'printf "%s" "$out" | grep -q "verdict ACCEPT issue=#9"'
-drain --ack-through 99 >/dev/null
+check "both verdicts are queued" 'printf "%s" "$out" | grep -c "^wake " | grep -qx 2'
+first=$(printf '%s\n' "$out" | awk '/^wake [0-9]+ /{ print $2; exit }')
+drain --ack-through "$first" >/dev/null
+out=$(watch); check "the ack removed only seq <= N" \
+  'printf "%s" "$out" | grep -q "^wake $((first + 1)) verdict"'
+drain --ack-through 999 >/dev/null
 
 # 4. A handed-back PR wakes only when its live head moved.
 echo '[{"number":10,"head":{"sha":"aaa111ffff"}},{"number":11,"head":{"sha":"bbb"}}]' \
@@ -99,6 +115,14 @@ comment 50 "HANDBACK issue=#20 pr=#20 status=done" | comments
 out=$(watch); rc=$?
 check "hand-back without a head still wakes" '[ "$rc" -eq 0 ] && has handback'
 drain --ack-through 99 >/dev/null
+# An odd response without html_url must not shift the trust flag out of its column.
+jq -n '[{id: 51, body: "HANDBACK issue=#21 pr=#21 head=f00d status=done",
+  author_association: "OWNER", user: {login: "alice"},
+  updated_at: "2026-11-14T00:00:09Z"}]' > "$fake/comments.json"
+out=$(watch 2>"$tmp/err8u"); rc=$?
+check "a comment with no html_url still wakes" '[ "$rc" -eq 0 ] && has f00d'
+check "and is not called untrusted" '! grep -q "comment 51" "$tmp/err8u"'
+drain --ack-through 999 >/dev/null
 echo '[{"number":20,"head":{"sha":"ffff"}}]' > "$fake/pulls.json"
 echo "idle $(( $(date +%s) - 400 )) 20" > "$st/workers/w20.state"
 watch >/dev/null 2>"$tmp/err8"; rc=$?
@@ -106,8 +130,18 @@ check "no head recorded, idle suppressed" '[ "$rc" -eq 124 ]'
 echo "idle notanumber 20" > "$st/workers/w20.state"
 watch >/dev/null 2>"$tmp/err8"; rc=$?
 check "bad worker state file survives" '[ "$rc" -eq 124 ] && grep -q "no idle epoch" "$tmp/err8"'
-rm -f "$st/workers/w20.state"
-
+printf 'idle' > "$st/workers/w21.state"
+watch >/dev/null 2>"$tmp/err8b"; rc=$?
+check "a half-written 'idle' is noted" '[ "$rc" -eq 124 ] && grep -q "no idle epoch" "$tmp/err8b"'
+printf 'idle 0999 8\n' > "$st/workers/w23.state"
+out=$(watch 2>"$tmp/err8d"); rc=$?
+check "a zero-padded epoch does not kill the run" '[ "$rc" -eq 0 ] && has w23'
+drain --ack-through 999 >/dev/null
+rm -f "$st/workers/w23.state"
+: > "$st/workers/w22.state"
+watch >/dev/null 2>"$tmp/err8c"; rc=$?
+check "an empty state file is noted" '[ "$rc" -eq 124 ] && grep -q "empty worker" "$tmp/err8c"'
+rm -f "$st/workers/w20.state" "$st/workers/w21.state" "$st/workers/w22.state"
 # 9. Trust is identity first, association second; an outsider's line is noted once.
 echo '[]' > "$fake/pulls.json"
 # (a) association: a collaborator who is not the gh login still wakes.

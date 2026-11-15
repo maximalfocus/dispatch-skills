@@ -22,8 +22,9 @@ case "${1:-}" in
         mv "$st/wake-queue.tmp" "$st/wake-queue"
     fi
     ds_unlock "$st/queue.lock"
-    left=$(wc -l < "$st/wake-queue" 2>/dev/null | tr -d ' ')
-    echo "acknowledged through $seq; ${left:-0} left" ;;
+    left=0  # a project with no queue file yet has nothing left to handle
+    [ -f "$st/wake-queue" ] && left=$(wc -l < "$st/wake-queue" | tr -d ' ')
+    echo "acknowledged through $seq; $left left" ;;
   *)
     echo "usage: drain.sh [--ack-through SEQ]" >&2; exit 1 ;;
 esac

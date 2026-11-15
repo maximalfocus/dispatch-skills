@@ -7,9 +7,10 @@
 # Wakes (each queued once, by key):
 #   handback  a new comment line starting "HANDBACK "        key comment:<id>
 #   verdict   a new comment line starting "ACCEPT "          key comment:<id>
-#   head      a handed-back PR whose live head moved on      key head:<pr>:<sha>
+#   head      a handed-back PR whose live head moved         key head:<pr>:<sha>
 #   idle      a worker idle ≥ DISPATCH_IDLE_SECS (300) with no hand-back in the 5 min before it
-#             went idle; worker files are workers/<id>.state = "<busy|idle> <epoch> <issue>"
+#             went idle; worker files are workers/<id>.state = "<busy|idle> <epoch> <issue>";
+#             an empty file or an idle line with no epoch is noted, then skipped
 #   error     GitHub unreachable for 20 polls in a row       key error:github:<hour>
 # A comment counts when its author login is in DISPATCH_TRUSTED_LOGINS (default: the login gh
 # posts as, read once from `gh api user`) or its author_association is in DISPATCH_TRUSTED_AUTHORS
@@ -91,14 +92,15 @@ poll_comments() {  # queue HANDBACK/ACCEPT lines; record hand-backs tab-separate
       | (($c.author_association // "") | if type == "string" then ascii_upcase else "" end) as $who
       | (($c.user | if type == "object" then .login else "" end) // "") as $login
       | ($login | if type == "string" then ascii_upcase else "" end) as $by
-      | [($c.id | tostring), ., (($c.html_url // "") | tostring),
+      | (($c.html_url // "") | if type == "string" and . != "" then . else "-" end) as $url
+      | [($c.id | tostring), ., $url,
          (if ($who != "" and ($trusted | split(" ") | index($who)) != null)
               or ($by != "" and ($logins | split(" ") | index($by)) != null)
           then "yes" else "no" end)]
       | @tsv') || return 1
   [ -z "$rows" ] ||
   printf '%s\n' "$rows" |
-  while IFS=$'\t' read -r id line url ok; do
+  while IFS=$'\t' read -r id line url ok; do  # every field is non-empty, or read would collapse it
     if [ "$ok" != yes ]; then  # an outsider's line is data, not an event (Article 8)
       if ! grep -qxF "skipped:$id" "$st/seen" 2>/dev/null; then
         echo "watch: ignoring comment $id from $(ds_clean "$url"): not trusted" \
@@ -145,10 +147,16 @@ poll_workers() {
   for f in "$st"/workers/*.state; do
     [ -f "$f" ] || continue
     id=$(basename "$f" .state); read -r state since issue < "$f"
-    [ "$state" = idle ] && [ -n "$since" ] || continue
-    case $since in *[!0-9]*)  # a half-written file must not kill the watcher
-      echo "watch: skipping $f: no idle epoch in '$since'" >&2; continue ;; esac
-    [ $((now - since)) -ge "$idle_after" ] || continue
+    case $state in  # a half-written or unreadable file is noted, never fatal
+      idle) ;;
+      '') echo "watch: skipping $f: empty worker state" >&2; continue ;;
+      *) continue ;;
+    esac
+    case $since in
+      '') echo "watch: skipping $f: no idle epoch yet" >&2; continue ;;
+      *[!0-9]*) echo "watch: skipping $f: no idle epoch in '$since'" >&2; continue ;;
+    esac
+    [ $((now - 10#$since)) -ge "$idle_after" ] || continue  # 10#: a padded epoch is not octal
     recent=$(awk -F'\t' -v i="$issue" -v s="$since" '$1 == i && $4 + 0 >= s - 300 { n++ }
       END { print n+0 }' "$st/handbacks" 2>/dev/null || echo 0)
     [ "${recent:-0}" -eq 0 ] || continue
