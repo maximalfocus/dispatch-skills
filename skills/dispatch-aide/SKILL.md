@@ -60,8 +60,9 @@ Before delivery starts, for every environment the acceptance strategy names:
 ## The verification kit
 
 Your reusable way to drive the product as a user does: a project-local skill (`verify-<app>`, in
-the folder the project keeps agent skills: `.claude/skills/` or `.agents/skills/`) that you own
-and change through a PR the dispatcher lands. It is test tooling, not product code. It holds:
+the folder the project keeps agent skills: `.claude/skills/` or `.agents/skills/`) that you own.
+Each change to it has an issue the dispatcher files; open the PR against it, run its gate, and post
+a Hand-back as a worker would. It is test tooling, not product code. It holds:
 
 - **Launch**: the exact start command, from an empty data area to *usable* (migrations and seed
   data done), and the sign that it is usable; a process that answers is not yet usable.

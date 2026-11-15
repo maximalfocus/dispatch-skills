@@ -119,7 +119,7 @@ STANDING <the project's standing orders, verbatim>
 HANDBACK post the Hand-back as a PR comment, then stop
 ```
 
-**Hand-back** (worker → dispatcher), a PR comment:
+**Hand-back** (worker, or the aide for its kit → dispatcher), a PR comment:
 
 ```text
 HANDBACK issue=#<n> pr=#<m> head=<sha> status=done|blocked|needs-decision
