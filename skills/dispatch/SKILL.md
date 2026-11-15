@@ -61,8 +61,11 @@ Do not start delivery until each holds; most stalls later come from skipping one
    criteria are observable, the plan is attached, dependencies have landed, and the environment
    exists.
 3. **Brief and start.** Write the Brief (format below) with the WHY: the core need this serves.
-   Start the worker with the start script; it pre-registers folder trust and confirms the worker
-   went busy from its hook file. A start that is not confirmed is a failed start, not a worker.
+   A field you cannot fill means the issue is not Ready. Start the worker with the start script;
+   it pre-registers folder trust and confirms the worker went busy from its hook file. A start that
+   is not confirmed is a failed start, not a worker. **Pilot first:** a project's first issue runs
+   alone through land and acceptance, and the Brief template is fixed from what it showed before
+   more workers start.
 4. **Watch.** Run `scripts/watch.sh` (beside this skill) in the project; it exits 0 with
    wakes: a Hand-back or an aide verdict from your own gh login, a handed-back PR whose head moved,
    a worker idle with no hand-back, GitHub unreachable. Handle each, then
@@ -75,6 +78,14 @@ Do not start delivery until each holds; most stalls later come from skipping one
    the evidence (PRs are not held open for review rounds). The issue is **Done** when landed, the
    aide posted PASS (or NOT-RUN with a reason you accepted and reported), and user docs are current.
 7. **Report.** At each stage boundary (Format: Stage report).
+
+**Standing orders** are numbered one-constraint lines under `## Standing orders` in the project's
+rules. Every Brief and every message that restarts a worker carries them verbatim; directives
+decay across restarts. An instruction you give a second time becomes a standing order.
+
+**Unattended running** (the user away) is earned, not assumed: one issue ran end to end while the
+user watched, the aide drives the product without the user, every stage can stop the line, and
+each failure that repeated in earlier runs is now a check. Until then, run while the user watches.
 
 Classes of service: **expedite** (broken integration branch, severe acceptance failure, release
 blocker) stops new starts until cleared; anyone may raise it and you must answer it first.
@@ -95,8 +106,12 @@ proven lessons go to the project rules or `/dispatch-evolve`.
 ISSUE #<n> <title>   REPO <owner/repo>   BASE <branch>   WORKTREE <path>
 WHY      <the end-customer need this serves, one line>
 GOAL     <one sentence>   ACCEPT <issue criteria + aide plan link>   TIER <1|2|3>
+CONTEXT  <file and PR pointers; each upstream Hand-back this depends on, pasted in full>
 GATE     <exact test command; exit code decides>
-LIMITS   <out-of-scope areas; data and credential rules; grants that apply, quoted>
+LIMITS   <paths it may write and may not; data and credential rules; grants that apply, quoted>
+FORBIDDEN <merge, rebase or retarget a PR, force-push, edit outside LIMITS; issue-specific bans>
+TIMEBOX  <rough cap; on expiry, hand back status=blocked with what is done, never run on>
+STANDING <the project's standing orders, verbatim>
 HANDBACK post the Hand-back as a PR comment, then stop
 ```
 
