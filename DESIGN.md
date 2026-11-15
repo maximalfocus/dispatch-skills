@@ -112,8 +112,9 @@ is one ask queue, so the user never has two open asks from one project.
 1. Requirements source exists (PRD with the end customer's core needs as a short list).
 2. Design baseline: architecture, design system or tokens, data and integration boundaries.
 3. Acceptance strategy: which environments, which stacks need which E2E (section 5), risk tiers.
-4. Environment readiness: the aide has run one smoke test end to end on every environment
-   without the user's hands (sign-ins persisted, OS prompts cleared, test data area agreed).
+4. Environment readiness: the aide's verification kit (section 5) has run end to end on every
+   environment without the user's hands (sign-ins persisted, OS prompts cleared, test data area
+   agreed).
 5. Gates: the test command, required CI checks (including any sibling project's shared code), and
    the merge grant are recorded.
 6. Team rules written: grants, data and credential limits, stakeholder rules, WIP limit,
@@ -162,6 +163,25 @@ whose proven lessons go to the project rules or `/dispatch-evolve`.
 | Exploratory session (charter-based) | aide | once per milestone | nothing; files issues |
 | Release smoke on every target | aide | per release | the release |
 | Escaped-defect review | dispatcher + aide | when the user or stakeholder finds a bug | changes the plan template |
+
+**The verification kit** is what makes acceptance repeatable instead of heroic. Phase 0 ends with
+a project-local skill the aide owns that launches the product to a usable state, checks the
+instance is worth driving, drives it with the project's real handles, captures evidence of the
+real user path and its side effects, and cleans up without destroying that evidence; plus a
+feature map that says, per user-facing feature, how a user reaches it and which end state proves
+it. It is proven by a full run before the environment is declared ready, and reconciled with the
+product at each milestone, because a map that drifts from the product passes things that broke.
+The kit is test tooling in the aide's ownership, never product code; the product's own suite stays
+the workers'.
+
+**What a verdict may claim.** Each step records how it ran: driven live, or the project's suite at
+the requested head. Reading code, a type check, or green CI is an input, never a pass. A FAIL needs
+a failure shown at the requested head; a defect the base already had is filed separately unless
+the change copies or newly reaches it, and for tier 1 the core scenario also runs on the previous
+accepted head so a regression is told from an old defect. An executor's result that does not name
+its head and method does not count. Where more than one vendor is available, the aide and its
+executors run on a different model family from the workers, because a judge that shares the
+maker's blind spots is a weaker judge.
 
 Acceptance depth follows risk: **tier 1** (money, data, security, irreversible writes, core
 flows) gets the full plan on the real environment every time; **tier 2** gets the core path;
@@ -253,6 +273,9 @@ restated here in this model's terms; no text is copied.
 | Its standing-orders register until October 2026: carried verbatim at every spawn and resume, because directives decay between restarts and each lost one costs the user a turn | Standing orders in the project's rules, carried verbatim in every Brief and restart |
 | A pilot unit through the whole path before fan-out, so a flawed brief costs one agent | The first issue runs alone; the template is fixed before more workers start |
 | The overnight guide: trust is earned before a loop runs alone | Unattended running needs a recorded grant and the four conditions in section 4 |
+| create-verification-skill: a project-local skill that launches, health-checks, drives, evidences, and cleans up the app, with a per-feature map, proven by one full run; maintain-verification-skill reconciles the map with the app | The aide's verification kit is the Phase 0 deliverable and is reconciled at each milestone (section 5) |
+| Autopilot and shipping verdicts: only an independent verifier on another model family counts; block only for a problem shown at the head; a base defect does not block | Verdict rules in section 5; the aide runs on a different model family where one is available |
+| Swarm: a lane result missing its SHAs or method is dropped and re-run once; a gap is not a pass | An executor result without its head and method is re-run once, then NOT-RUN |
 | In October 2026 it deleted ~3,000 lines of orchestration scripts, including the bookkeeping store that mirrored forge state | GitHub stays the authority; scripts check facts and keep no second copy of the project |
 
 ## 12. Mechanics contracts

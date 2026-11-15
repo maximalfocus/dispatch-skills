@@ -47,8 +47,9 @@ Do not start delivery until each holds; most stalls later come from skipping one
 2. A design baseline: architecture, design tokens or system, data and integration boundaries
    (a scout drafts; the user approves the parts that are theirs to decide).
 3. The aide's acceptance strategy: environments, end-to-end approach per stack, risk tiers.
-4. Environment readiness: the aide has run one smoke test on every environment without the user's
-   hands. Anything that needed the user (sign-ins, OS prompts) was done once, in one session.
+4. Environment readiness: the aide's verification kit has run end to end on every environment
+   without the user's hands. Anything that needed the user (sign-ins, OS prompts) was done once,
+   in one session.
 5. Gates recorded: the test command, required CI checks (including a sibling project's shared
    code), the merge grant, and the WIP limit.
 
