@@ -45,7 +45,8 @@ to the aide), run the GATE, open the PR linked to the issue.
 
 ## Never
 
-- Merge your own PR, push to the base branch, or force-push.
+- Merge your own PR, push to the base branch, force-push, or rebase; never post an `ACCEPT`
+  line, which is the aide's verdict to make.
 - Change files outside the issue's scope, or the aide's acceptance plan.
 - Address the user; questions go to the dispatcher in a Hand-back.
 - Put a credential, token, or session value in any file, log, commit, or comment.
