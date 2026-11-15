@@ -53,8 +53,8 @@ Do not start delivery until each holds; most stalls later come from skipping one
 4. Environment readiness: the aide's verification kit has run end to end on every environment
    without the user's hands. Anything that needed the user (sign-ins, OS prompts) was done once,
    in one session.
-5. Gates recorded: the test command, required CI checks (including a sibling project's shared
-   code), the merge grant, the gate files, and the WIP limit.
+5. Gates recorded: the test command, required CI checks (a sibling project's shared code too),
+   the merge grant, gate files, WIP limit; each role's guard seen denying one forbidden act.
 
 ## Phase 1 — Delivery
 
@@ -197,7 +197,7 @@ loses anything is a defect in the records.
 ## Mechanics (scripts own these; see `DESIGN.md` §12 for contracts)
 
 Done: watcher and wake queue (`scripts/watch.sh`, `scripts/drain.sh`). By hand, per contract:
-turn-end guard · start · capacity (75 = queued) · env lock · pinned land · teardown · inbox · board.
+turn-end and role guards · start (over WIP: 75) · env lock · pinned land · teardown · inbox · board.
 
 ## Never
 

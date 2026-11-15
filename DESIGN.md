@@ -117,7 +117,8 @@ is one ask queue, so the user never has two open asks from one project.
    environment without the user's hands (sign-ins persisted, OS prompts cleared, test data area
    agreed).
 5. Gates: the test command, required CI checks (including any sibling project's shared code), and
-   the merge grant are recorded.
+   the merge grant are recorded; each role's guard is installed and seen denying one forbidden act
+   (`role-guard --probe <role>`).
 6. Team rules written: grants, data and credential limits, stakeholder rules, WIP limit,
    standing orders.
 
@@ -246,7 +247,7 @@ have a full team and report to the user separately. Between them:
 - An unlimited worker count. WIP is a recorded limit the user can raise.
 - Per-vendor adapters in the skills. Runtime details live in scripts.
 
-## 11. Lessons from firstmate and pstack, and costs avoided
+## 11. Lessons from firstmate, pstack, and agent-governance-toolkit, and costs avoided
 
 [firstmate](https://github.com/kunchenguid/firstmate) proved most of the supervision ideas this
 model uses. Its history (about 1,200 commits in five months) also shows what they cost when left
@@ -284,6 +285,18 @@ restated here in this model's terms; no text is copied.
 | Earlier Orchestrate: once roughly 70% of the budget is spent, spawn nothing more and finish the verified work | Fixed-date work stops starting once about 70% of its time is gone |
 | In October 2026 it deleted ~3,000 lines of orchestration scripts, including the bookkeeping store that mirrored forge state | GitHub stays the authority; scripts check facts and keep no second copy of the project |
 
+[agent-governance-toolkit](https://github.com/microsoft/agent-governance-toolkit) (Microsoft, MIT)
+checks each agent action with deterministic code before it runs. It is runtime middleware, not a
+delivery model, so only its principles carry over.
+
+| agent-governance-toolkit evidence | Rule in dispatch-skills |
+|---|---|
+| Its README: prompt-level safety ("please follow the rules") is not a control surface | Each role's Never items that a script can recognise are denied by `role-guard`, a PreToolUse hook, not left to prose (Article 10.3) |
+| Its Claude Code hook exits 2 when policy evaluation fails; its LIMITATIONS: with no policies loaded the default is allow, and a dashboard still says "governed" | `role-guard` denies on a missing config or unknown role; `start` confirms a worker only after its guard denied a probe, and Phase 0 sees every role's guard deny once |
+| Its identity spec: scope chains only narrow; delegation never grants more than the delegator holds | Article 8: delegation only narrows, from the user's rules to a Brief to a scout |
+| A 408-line LIMITATIONS document: it governs actions, not reasoning; its audit records attempts, not outcomes | Section 13 states this model's own limits |
+| Cryptographic agent identity, trust scores, privilege rings, a Merkle audit chain, SDKs in five languages; its README says most teams run only policy enforcement and audit logging, and its LIMITATIONS says the full stack may be overkill for simple use cases | Not adopted: every role posts as the user's gh login and GitHub is the record; generic command safety (destructive commands, secrets, network) is left to such a tool run alongside |
+
 ## 12. Mechanics contracts
 
 Each mechanism is one small bash script with a test; firstmate's version of each is cited so the
@@ -296,13 +309,30 @@ screen or prose to decide anything (Article 10.5).
 | `drain` (`skills/dispatch/scripts/drain.sh`) | print queued wakes (124 when empty); `--ack-through <seq>` removes them only after they were handled, so a crash re-handles rather than loses | a finished worker's last event was absorbed and missed |
 | `turnend-guard` | Stop hook: if work is in flight (worker state files exist) and the watcher is not healthy (lock pid alive, beacon younger than 5 min), block the stop (exit 2) with the repair line; at most 3 blocks, then allow loudly; inert inside worker worktrees | sessions sat blind for hours after a turn ended unarmed |
 | `autoarm` | Claude Code: an async Stop hook runs the watcher in the foreground and exits 2 with the wake reason, which wakes the idle session. Codex: a blocking `watch --once --seconds 180` checkpoint call instead | the same blind-turn incidents |
-| `start` | create a linked worktree; pre-register folder trust in the agent's config; launch the agent with the Brief and per-worker hooks that write `busy`/`idle`/`turn-ended` to the worker's state file; write `<id>.meta` with the Brief's TIMEBOX; confirm `busy` within 60 s or fail; refuse over the WIP limit with exit 75 (queued); the watcher then wakes `overdue` once per worker and TIMEBOX when a busy worker passes it with no new push | workers wedged on a trust dialog; surplus workers burning turns |
+| `start` | create a linked worktree; pre-register folder trust in the agent's config; write the worker's role and LIMITS paths into its `role-guard` config; launch the agent with the Brief and per-worker hooks that write `busy`/`idle`/`turn-ended` to the worker's state file; write `<id>.meta` with the Brief's TIMEBOX; confirm `busy` within 60 s and a denied `role-guard --probe worker`, or fail; refuse over the WIP limit with exit 75 (queued); the watcher then wakes `overdue` once per worker and TIMEBOX when a busy worker passes it with no new push | workers wedged on a trust dialog; surplus workers burning turns |
 | `inbox` | messages are files `NNN.msg` (atomic rename, never reused); the worker's terminal receives one constant line naming the inbox; re-ring every 90 s up to 3 times, then one wake; never ring a dead or busy session | text typed into terminals was lost or swallowed |
 | `envlock` | `acquire|release|status <env>`; holder file `pid, role, issue, since`; others get exit 75; reclaim only when the holder's pid is provably dead | (new here) two holders driving one machine |
 | `land` | `land <pr> --head <sha>`: re-read live state; refuse unless open, not draft, mergeable, live head = `<sha>`, and every required check reported green at that head; refuse with "update needed" when the integration branch moved past the PR's merge base and changed a file the PR also changes (a fact the script can check; whether the base changed code the PR calls or that calls it is the dispatcher's judgment before calling `land`), and otherwise require no update; the worker repairs it by merging the base into its branch, never by a rebase or force-push, and hands back the new head; refuse a PR touching a path listed on the project's `Gate-files:` line unless the dispatcher passes `--gate-change <issue>` naming an open issue where the aide recorded evidence that the gate still guards (and, for a disabled check, the issue to restore it); then squash-merge pinned to the head and delete the branch | a required check that never reported counted as passing |
 | `teardown` | remove a worktree only when its HEAD is on a remote ref, contained in the merged PR's head, or identical in content to the base; a scout only when its report exists; otherwise refuse | unlanded work must never be discarded |
 | `board` | render ≤ 80 lines from `gh` issue/PR lists, worker state files, and open `ask` issues; list each worker started since the last stage report with its end (landed, replaced, absorbed) or as running, and flag any that is neither; never store progress of its own | a board that stored state drifted from the truth |
-| `subagent-guard` | PreToolUse hook for the dispatcher: deny the agent tool's built-in subagent/task delegation, so all work goes through `start` and stays visible | delegated work escaped every guard; supervision down 73 min |
+| `role-guard` | PreToolUse hook for every role, configured per session by `start` (or the project settings for the dispatcher and aide) with the role and its paths: deny the dispatcher the agent tool's built-in subagent/task delegation; deny a worker `gh pr merge`, a force-push, a rebase, a write outside its Brief's LIMITS paths, and a comment with an `ACCEPT` line; deny the aide a write outside its kit and the evidence area the project rules allow; deny (exit 2) when the config is missing or unreadable or the role is unknown, never allow by default; `role-guard --probe <role>` feeds one forbidden act through the installed hook, and `start` confirms a worker only after its probe was denied | delegated work escaped every guard; supervision down 73 min. agent-governance-toolkit: a guard with no policy loaded allows everything while looking installed |
 
 Supported runtimes: Claude Code and Codex, in tmux or herdr, through one small runtime file. Worker
 permissions follow the mode the user configured; the scripts never add a permission-bypass flag.
+
+## 13. Known limits
+
+- **Guards are tripwires, not a sandbox.** `role-guard` runs as the same OS user as the agents it
+  checks; an agent with a shell can reach around a pattern (a script it writes, an alias). It
+  catches drift and mistakes. Isolation against a determined agent is the runtime's job: a
+  sandbox, a separate account.
+- **One identity for every role.** Workers, the aide, and the dispatcher post as the same gh
+  login, so GitHub cannot tell an aide's `ACCEPT` line from a worker's. `role-guard` denies a
+  worker posting one where it can see it; past that, a verdict is trusted because the aide's
+  session wrote it.
+- **Records show attempts and claims; only acceptance shows outcomes.** A green check, a
+  Hand-back, and a merged PR say what was tried and claimed. Only the aide's run on a real
+  environment says what the product does.
+- **No runtime action governance.** The skills do not police what a worker's commands do to
+  files, networks, or secrets beyond its role's Never list. A project that needs that runs a
+  dedicated policy tool alongside; this model does not reimplement one.
