@@ -66,6 +66,9 @@ agents on real products, and the intent behind it can be read off what that pers
    scouts: research, documents, operations, stakeholder materials — reports, never PRs
 ```
 
+The user may also speak to the aide directly; what the aide records goes back to the dispatcher
+(below).
+
 Decision rights (R = does it, A = decides, C = consulted, I = informed):
 
 | Decision | User | Dispatcher | Aide | Worker |
@@ -94,11 +97,13 @@ between runs, and must find its own test data to delete it. Its *execution* scal
 not: first the project's own end-to-end suite, then scripted checks the aide runs, then acceptance
 executors (one per environment). Only the aide gives a verdict.
 
-**When the user speaks to the aide.** The user may talk to any role, and often will talk to the
-aide about an environment or a result. The aide answers, records what the user said (verbatim,
-dated) on the issue, and tells the dispatcher, so the records stay whole. Anything the aide needs
-*from* the user still becomes an Ask through the dispatcher: there is one ask queue, so the user
-never has two open asks from one project.
+**When the user speaks to the aide.** The user may talk to the dispatcher or the aide, and often
+will talk to the aide about an environment or a result. The aide answers, records what the user
+said (verbatim, dated) on the issue, and tells the dispatcher, so the records stay whole. A
+decision that belongs to the dispatcher — scope, order, acceptance criteria, landing — the aide
+hands over and does not make: a direct conversation is not a second path around the decision
+rights. Anything the aide needs *from* the user still becomes an Ask through the dispatcher: there
+is one ask queue, so the user never has two open asks from one project.
 
 ## 4. Lifecycle
 
@@ -157,7 +162,7 @@ Every interaction is one of three kinds:
 
 The dispatcher measures asks per day and time-to-answer, and reports the Do count; a rising Do
 count is a design defect to remove, not a cost to accept. The user may start a conversation with
-any role (section 3); only the dispatcher sends Asks.
+the dispatcher or the aide (section 3); only the dispatcher sends Asks.
 
 ## 7. Flow metrics (reported briefly at each stage)
 

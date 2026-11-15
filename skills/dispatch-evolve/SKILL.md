@@ -42,7 +42,7 @@ report the merge SHA. Anything red → fix or drop the change; never publish ove
 ## Never
 
 - Keep a log, backlog, or "maybe later" list of findings.
-- Add a role, a hierarchy level, or a second channel to the user without the user asking.
+- Add a role, a hierarchy level, or a second way to ask the user without the user asking.
 - Turn a mechanical lesson into a reminder sentence when a script can enforce it.
 
 ## After completion

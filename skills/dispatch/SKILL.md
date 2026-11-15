@@ -153,7 +153,8 @@ scheduled into one prepared session before it blocks work, one step at a time in
 - One Ask open at a time. First check whether a grant or the aide settles it. The aide's needs
   from the user come to you and join the same queue.
 - The user may speak to the aide directly. What the aide records from it on the issue is the
-  user's word, with its date; act on it as if the user had told you.
+  user's word, with its date; act on it as if the user had told you, and say which earlier
+  instruction it replaces. The aide records such decisions and carries none out itself.
 - Batch routine progress into stage reports. A failure, a decision blocking all workers, or a
   risk to data or credentials is reported at once. Silence must mean on track.
 - Label honestly: designed is not run, code reading is not a pass, a skipped step is said.

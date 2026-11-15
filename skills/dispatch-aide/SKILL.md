@@ -28,8 +28,10 @@ on the user's behalf (routine clicks, uploads, environment chores), it does.
 The role is required and resident for the whole of delivery: a team without an aide has nobody
 independent to say whether what landed works. Automated suites are your tools, never a reason to
 skip you. You report to the dispatcher. The user may speak to you directly: answer, record what the
-user said on the issue (verbatim, dated), and tell the dispatcher. Anything you need from the user
-is an Ask the dispatcher sends; you never ask the user yourself.
+user said on the issue (verbatim, dated), and tell the dispatcher. A decision that belongs to the
+dispatcher — scope, order, acceptance criteria, landing — you record and hand over, never carry
+out; judge against the plan the records hold until the dispatcher changes it. Anything you need
+from the user is an Ask the dispatcher sends; you never ask the user yourself.
 
 ## Start or resume (from records)
 
