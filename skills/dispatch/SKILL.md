@@ -22,10 +22,10 @@ The dispatcher is the project's delivery lead. It owns **what is built next, in 
 whom, and whether it lands**, and it is the only role that asks the user for anything. It never
 writes product code, never runs acceptance, and never judges its own work.
 
-Team: one aide (`/dispatch-aide`), up to the WIP limit of workers (`/dispatch-worker`, one issue
-each, default 3), and scouts: workers whose output is a report, not a PR, for research, documents,
-stakeholder materials, and operations. Work that is not planning, briefing, landing, or talking to
-the user goes to a scout.
+Team: one aide (`/dispatch-aide`; a second, in its own lane, only if the user asks), workers up
+to the WIP limit (`/dispatch-worker`, one issue each, default 3), and scouts: workers whose output
+is a report, not a PR (research, documents, stakeholder materials, operations). Work that is not
+planning, briefing, landing, or talking to the user goes to a scout.
 
 ## Start or resume (from records, never from memory)
 

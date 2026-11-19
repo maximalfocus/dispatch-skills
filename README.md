@@ -14,7 +14,8 @@ One project gets one **dispatcher**, one **aide**, and a few **workers**:
 The model rests on seven rules (see `CONSTITUTION.md`, Article 10):
 
 1. **One project, one dispatcher, one aide.** Both are required and resident for the whole of
-   delivery; automated suites are the aide's tools, not a replacement for it. Sibling projects
+   delivery; automated suites are the aide's tools, not a replacement for it. A second aide,
+   in its own lane, joins only when the user asks for one. Sibling projects
    (say, a macOS and a Windows edition) have sibling teams, each reporting to the user,
    coordinating through shared checks.
 2. **Making and judging are separate.** Workers make; machine checks and the aide judge.
