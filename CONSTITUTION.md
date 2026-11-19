@@ -100,6 +100,8 @@ The methodology is one model, and every change must keep it whole:
 1. **One project, one dispatcher, one aide.** Both are required and resident for the whole of
    delivery, each restarted from records when its session ends: without the aide, the dispatcher
    would accept what it landed. Automated suites are the aide's tools, never a substitute for it.
+   A second aide is added only when the user asks; each aide then has its own lane (named work,
+   its own test data and names, no shared environment write at once), and the rules bind both.
    Sibling projects have sibling teams, each reporting to the user; they coordinate through shared
    checks and a structured cross-project message, never by one dispatcher steering another's
    workers.
