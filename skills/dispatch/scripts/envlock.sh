@@ -44,7 +44,7 @@ case $pid in *[!0-9]*) usage ;; esac
 st=$(ds_state) || exit 1
 dir="$st/envlocks"; mkdir -p "$dir" || exit 1
 
-alive() { ps -p "$1" >/dev/null 2>&1; }
+alive() { kill -0 "$1" 2>/dev/null || ps -p "$1" >/dev/null 2>&1; }  # gone only if both say so
 caller() {  # the session that called us: the nearest ancestor that is not a shell
   local p=$PPID comm next i=0
   while [ "$i" -lt 10 ]; do

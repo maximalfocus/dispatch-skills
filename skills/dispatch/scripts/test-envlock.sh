@@ -86,18 +86,24 @@ envlock acquire .mutex --pid "$a"; check "a dot name is refused" '[ "$rc" -eq 1 
 envlock acquire e --pid "$a" --issue x; check "a bad issue is usage" '[ "$rc" -eq 1 ]'
 envlock frob e; check "an unknown command is usage" '[ "$rc" -eq 1 ]'
 
-# 7. Two racers, one winner.
-for p in 1 2 3 4 5 6; do
-  ( cd "$repo" && "$here/envlock.sh" acquire race --pid "$a" >/dev/null 2>&1
-    echo $? >> "$tmp/race" ) &
-done
-( cd "$repo" && "$here/envlock.sh" acquire race --pid $$ >/dev/null 2>&1; echo $? >> "$tmp/race" ) &
-wait $(jobs -p | grep -v "^$a\$") 2>/dev/null
-check "racing holders never both win" \
-  '[ "$(wc -l < "$locks/race")" -eq 1 ] && [ "$(grep -c . "$tmp/race")" -eq 7 ]'
+# 7. Seven racers for one environment, six as one holder and one as another: one holder wins.
+racers=
+race() {  # pid — one racer; its exit code and anything it said go to the race record
+  ( cd "$repo" && "$here/envlock.sh" acquire race --pid "$1" >/dev/null 2>>"$tmp/race.err"
+    echo "$?" >> "$tmp/race" ) &
+  racers="$racers $!"
+}
+for p in 1 2 3 4 5 6; do race "$a"; done; race $$
+# shellcheck disable=SC2086  # a list of pids
+wait $racers
 winner=$(cut -d' ' -f1 "$locks/race")
 if [ "$winner" = "$a" ]; then want=1; else want=6; fi
+rc=$want; out="winner=$winner a=$a self=$$ codes=$(tr '\n' ' ' < "$tmp/race")"
+out="$out said=$(tr '\n' ' ' < "$tmp/race.err")"
+check "racing holders never both win" \
+  '[ "$(wc -l < "$locks/race")" -eq 1 ] && [ "$(grep -c . "$tmp/race")" -eq 7 ]'
 check "the losers all got 75" '[ "$(grep -c "^75\$" "$tmp/race")" -eq "$want" ]'
+check "nobody got anything but 0 or 75" '! grep -qvE "^(0|75)\$" "$tmp/race"'
 
 echo "test-envlock: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
