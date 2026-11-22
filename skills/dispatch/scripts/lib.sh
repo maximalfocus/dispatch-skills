@@ -1,11 +1,14 @@
 # lib.sh — helpers shared by the dispatch runtime scripts. Sourced, never run. Bash 3.2-safe.
 # State lives in <project>/.dispatch/state (override: DISPATCH_STATE) and is excluded from git
-# locally through .git/info/exclude, so it never reaches a commit.
+# locally through .git/info/exclude, so it never reaches a commit. A project has one state dir, in
+# its main checkout: a script run in a linked worktree reads and writes the same one.
 
 ds_state() {  # print the state dir, creating it and its git exclusion on first use
-  local root dir common
+  local root dir common main
   root=$(git rev-parse --show-toplevel 2>/dev/null) || {
     echo "dispatch: run inside the project's git checkout" >&2; return 1; }
+  main=$(git worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p')
+  [ ! -d "$main" ] || root=$main
   dir="${DISPATCH_STATE:-$root/.dispatch/state}"
   mkdir -p "$dir/workers" || return 1
   common=$(cd "$root" && cd "$(git rev-parse --git-common-dir)" && pwd) || return 1
