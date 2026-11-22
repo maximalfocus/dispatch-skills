@@ -196,8 +196,8 @@ loses anything is a defect in the records.
 
 ## Mechanics (scripts own these; see `DESIGN.md` §12 for contracts)
 
-Done, in `scripts/` (usage in each header): `watch.sh`, `drain.sh`, `land.sh`, `teardown.sh`,
-`envlock.sh`, `role-guard.sh`, `start.sh` (WIP: 75), `inbox.sh`. By hand: turn-end guard, board.
+In `scripts/` (usage in each header) `watch.sh`, `drain.sh`, `land.sh`, `teardown.sh`, `envlock.sh`,
+`role-guard.sh`, `start.sh` (WIP: 75), `inbox.sh`, `turnend-guard.sh`, `autoarm.sh`. By hand: board.
 
 ## Never
 
