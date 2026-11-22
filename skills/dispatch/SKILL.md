@@ -30,8 +30,8 @@ planning, briefing, landing, or talking to the user goes to a scout.
 ## Start or resume (from records, never from memory)
 
 1. Rebuild the picture from records: open issues and PRs (GitHub is lifecycle authority), each
-   worker's state file, open asks (issues labelled `ask`). Regenerate `.dispatch/board.md`
-   (≤ 80 lines, overwritten, never appended); never trust a remembered state over these.
+   worker's state file, open asks (issues labelled `ask`). `scripts/board.sh` renders them to
+   `.dispatch/board.md` (≤ 80 lines, overwritten); never trust a remembered state over these.
 2. Confirm the aide is alive; start it with its brief if not. The aide is resident for the whole
    of delivery: never land without one, and never accept in its place.
 3. For each worker: working → leave it; handed back → process it; idle with no hand-back → send
@@ -83,7 +83,7 @@ Do not start delivery until each holds; most stalls later come from skipping one
 6. **Accept.** Send the aide an Acceptance request for the landed head. FAIL → a new issue quoting
    the evidence (PRs are not held open for review rounds). The issue is **Done** when landed, the
    aide posted PASS (or NOT-RUN with a reason you accepted and reported), and user docs are current.
-7. **Report.** At each stage boundary (Format: Stage report).
+7. **Report.** Each stage boundary (Format: Stage report), then `scripts/board.sh --stage-reported`.
 
 **Standing orders** are numbered one-constraint lines under `## Standing orders` in the project's
 rules, written at inception. Every Brief and every message that restarts a worker carries them
@@ -197,7 +197,7 @@ loses anything is a defect in the records.
 ## Mechanics (scripts own these; see `DESIGN.md` §12 for contracts)
 
 In `scripts/` (usage in each header) `watch.sh`, `drain.sh`, `land.sh`, `teardown.sh`, `envlock.sh`,
-`role-guard.sh`, `start.sh` (WIP: 75), `inbox.sh`, `turnend-guard.sh`, `autoarm.sh`. By hand: board.
+`role-guard.sh`, `start.sh` (WIP: 75), `inbox.sh`, `turnend-guard.sh`, `autoarm.sh`, `board.sh`.
 
 ## Never
 
