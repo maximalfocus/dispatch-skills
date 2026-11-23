@@ -66,3 +66,10 @@ ds_print_queue() {  # print queued wakes and the ack command; returns 1 when the
   last=$(tail -n 1 "$st/wake-queue" | cut -f2)
   echo "ack after handling: drain.sh --ack-through $last"
 }
+
+ds_rule() {  # ref key — print the values of the project's "Key: value" rule lines at that commit
+  local f
+  for f in AGENTS.md CLAUDE.md; do
+    git show "$1:$f" 2>/dev/null | sed -n "s/^$2:[[:space:]]*//p"
+  done
+}
