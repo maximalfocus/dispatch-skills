@@ -17,7 +17,8 @@
 #      `role-guard --probe worker` to be denied through those hooks
 #   5. write <id>.meta (issue, kind, agent, term, handle, worktree, branch, base, brief, timebox
 #      in seconds, started) and open the agent in a new terminal with the Brief
-#   6. wait up to DISPATCH_START_WAIT (60) seconds for the worker's own hook to write its state
+#   6. wait up to DISPATCH_START_WAIT (60) seconds for the worker's own hook to write its state,
+#      then append the start to the start log that board.sh accounts from
 # A start that is not confirmed is a failed start, not a worker: its records are removed, and its
 # terminal is left open to look at. No permission-bypass flag is ever added.
 # Claude Code gets its hooks per session (--settings). Codex runs only hooks its user has reviewed
@@ -165,4 +166,5 @@ while :; do
     "$term $handle is left open (a trust or sign-in screen is the usual cause)"
   i=$((i + 1)); sleep 0.2
 done
+echo "$(date +%s) $id $issue $kind $branch" >> "$st/starts"; ds_trim "$st/starts"  # for board.sh
 echo "started $id issue=#$issue agent=$agent $term=$handle worktree=$wt timebox=$box"
