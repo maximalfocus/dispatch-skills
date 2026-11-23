@@ -13,20 +13,38 @@ rt_term() {  # print the terminal that carries workers here
   esac
 }
 
-rt_open() {  # term name dir command — open a terminal running the command; print its handle
-  local pane
+rt_open() {  # term name dir command — open a tab or window of that name running the command;
+  local pane  # print its handle
   case $1 in
     tmux)
       if [ -n "${TMUX:-}" ]; then
         "${DISPATCH_TMUX:-tmux}" new-window -d -P -F '#{pane_id}' -n "$2" -c "$3" "$4"
       else  # no client here: a detached session the user can attach to
-        "${DISPATCH_TMUX:-tmux}" new-session -d -P -F '#{pane_id}' -s "dispatch-$2" -c "$3" "$4"
+        "${DISPATCH_TMUX:-tmux}" new-session -d -P -F '#{pane_id}' -s "$2" -c "$3" "$4"
       fi ;;
-    herdr)
-      pane=$("${DISPATCH_HERDR:-herdr}" pane split --current --direction right --cwd "$3" \
-        --no-focus | jq -r '.result.pane.pane_id // empty') && [ -n "$pane" ] || return 1
+    herdr)  # a tab of its own in the caller's workspace, never a split of the caller's screen
+      pane=$("${DISPATCH_HERDR:-herdr}" tab create ${HERDR_WORKSPACE_ID:+--workspace \
+        "$HERDR_WORKSPACE_ID"} --cwd "$3" --label "$2" --no-focus |
+        jq -r '.result.root_pane.pane_id // empty') && [ -n "$pane" ] || return 1
       "${DISPATCH_HERDR:-herdr}" pane run "$pane" "$4" >/dev/null || return 1
       echo "$pane" ;;
+    *) return 1 ;;
+  esac
+}
+
+rt_name() {  # term handle name [tab] — name the agent in that terminal, and its tab when given
+  case $1 in
+    tmux) "${DISPATCH_TMUX:-tmux}" rename-window -t "$2" "$3" ;;
+    herdr) [ -z "${4:-}" ] || "${DISPATCH_HERDR:-herdr}" tab rename "$4" "$3" >/dev/null
+      "${DISPATCH_HERDR:-herdr}" agent rename "$2" "$3" >/dev/null ;;  # needs a detected agent
+    *) return 1 ;;
+  esac
+}
+
+rt_close() {  # term handle — close that terminal; its tab or window goes with its last pane
+  case $1 in
+    tmux) "${DISPATCH_TMUX:-tmux}" kill-pane -t "$2" ;;
+    herdr) "${DISPATCH_HERDR:-herdr}" pane close "$2" >/dev/null ;;
     *) return 1 ;;
   esac
 }
