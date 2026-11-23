@@ -9,7 +9,8 @@
 #
 # Every session is named <prefix>-<part>: the role for the dispatcher and the aides, the issue
 # number for a worker, scout-<number> for a scout. The prefix is the `Session-prefix:` rule line,
-# or the main checkout's directory name.
+# or the main checkout's directory name. In herdr the name is the workspace's: one workspace per
+# session, so the agent list and the space list both show the name and nothing else.
 #
 # From the Brief it reads ISSUE #<n>, BASE <branch>, WORKTREE <path>, TIMEBOX <90m|2h>, and on
 # the LIMITS line write=<paths> and deny=<paths>, up to the first ';'. A field it cannot read is
@@ -21,10 +22,10 @@
 #   4. write the worker's role-guard config (role, root, write, deny) and its hooks, and require
 #      `role-guard --probe worker` to be denied through those hooks
 #   5. write <id>.meta (issue, kind, agent, term, handle, name, worktree, branch, base, brief,
-#      timebox in seconds, started) and open the agent with the Brief in a tab (herdr) or window
-#      (tmux) of its own, under its name
+#      timebox in seconds, started) and open the agent with the Brief in a workspace (herdr) or
+#      window (tmux) of its own, under its name
 #   6. wait up to DISPATCH_START_WAIT (60) seconds for the worker's own hook to write its state,
-#      then name the agent and append the start to the start log that board.sh accounts from
+#      then append the start to the start log that board.sh accounts from
 # A start that is not confirmed is a failed start, not a worker: its records are removed, and its
 # terminal is left open to look at. No permission-bypass flag is ever added.
 # Claude Code gets its hooks per session (--settings). Codex runs only hooks its user has reviewed
@@ -61,7 +62,7 @@ if [ "${1:-}" = --name ]; then
   case ${2:-} in ''|*[!a-z0-9]*) die "usage: start.sh --name <role>" ;; esac
   git rev-parse --git-dir >/dev/null 2>&1 || die "run inside the project"
   term=$(rt_term) || exit 1; name="$(prefix)-$2"
-  if [ "$term" = herdr ]; then rt_name herdr "${HERDR_PANE_ID:-}" "$name" "${HERDR_TAB_ID:-}"
+  if [ "$term" = herdr ]; then rt_name herdr "${HERDR_PANE_ID:-}" "$name"
   else rt_name tmux "${TMUX_PANE:-}" "$name"; fi || die "could not name this session $name"
   echo "named $name"; exit 0
 fi
@@ -187,8 +188,6 @@ while :; do
     "$term $handle is left open (a trust or sign-in screen is the usual cause)"
   i=$((i + 1)); sleep 0.2
 done
-rt_name "$term" "$handle" "$name" 2>/dev/null ||
-  echo "start: note: the agent was not named $name" >&2
 echo "$(date +%s) $id $issue $kind $branch" >> "$st/starts"; ds_trim "$st/starts"  # for board.sh
 echo "started $id issue=#$issue agent=$agent $term=$handle worktree=$wt timebox=$box" \
   "name=$name"

@@ -40,11 +40,12 @@ cat > "$fake/herdr" <<'EOF'
 #!/usr/bin/env bash
 echo "$*" >> "$FAKE/term.calls"
 case "$1 $2" in
-  "tab create") echo "w1:p9" >> "$FAKE/panes"
-    echo '{"result":{"root_pane":{"pane_id":"w1:p9"},"tab":{"tab_id":"w1:t9"}}}' ;;
+  "workspace create") echo "w9:p1" >> "$FAKE/panes"
+    echo '{"result":{"root_pane":{"pane_id":"w9:p1"},"workspace":{"workspace_id":"w9"}}}' ;;
   "pane run") dir=$(sed -n 's/.*--cwd \([^ ]*\) .*/\1/p' "$FAKE/term.calls" | tail -n 1)
     (cd "$dir" && sh -c "$4" > "$FAKE/pane.log" 2>&1 &) ;;
-  "pane get") grep -qxF -- "$3" "$FAKE/panes" ;;
+  "pane get") echo "{\"result\":{\"pane\":{\"workspace_id\":\"${3%%:*}\"}}}"
+    grep -qxF -- "$3" "$FAKE/panes" ;;
 esac
 EOF
 cat > "$fake/agent" <<'EOF'
@@ -77,7 +78,7 @@ start() { out=$(cd "$repo" && "$here/start.sh" "$@" 2>&1); rc=$?; }
 says() { printf '%s' "$out" | grep -q -- "$1"; }
 meta() { sed -n "s/^$1=//p" "$st/workers/$2.meta" | head -n 1; }
 opened() {  # how many terminals were opened
-  local n; n=$(grep -c '^new-\|^tab create' "$fake/term.calls" 2>/dev/null); echo "${n:-0}"
+  local n; n=$(grep -c '^new-\|^workspace create' "$fake/term.calls" 2>/dev/null); echo "${n:-0}"
 }
 
 # 1. A good Brief starts a confirmed worker in its own worktree.
@@ -185,27 +186,24 @@ check "outside a worker it does nothing" '[ "$rc" -eq 0 ]'
 # 7. herdr carries a worker the same way.
 reset; brief 51
 out=$(cd "$repo" && DISPATCH_TERM=herdr "$here/start.sh" --brief "$b" 2>&1); rc=$?
-check "a worker starts in a herdr tab of its own, under its name" \
-  '[ "$rc" -eq 0 ] && says "herdr=w1:p9" && [ "$(meta term w51)" = herdr ] &&
-   grep -q "^tab create --cwd $tmp/wt51 --label project-51 --no-focus" "$fake/term.calls" &&
-   ! grep -q "pane split" "$fake/term.calls"'
-check "the agent is named once the start is confirmed" \
-  'says "name=project-51" && [ "$(meta name w51)" = project-51 ] &&
-   grep -q "^agent rename w1:p9 project-51" "$fake/term.calls"'
-out=$(cd "$repo" && DISPATCH_TERM=herdr HERDR_WORKSPACE_ID=w7 "$here/start.sh" --brief "$b" \
-  --id s51 --scout 2>&1); rc=$?
-check "a scout is named as one, in the caller's workspace" \
-  '[ "$rc" -eq 0 ] && grep -q "^tab create --workspace w7 .*--label project-scout-51 " \
-     "$fake/term.calls"'
+check "a worker starts in a herdr workspace of its own, under its name" \
+  '[ "$rc" -eq 0 ] && says "herdr=w9:p1" && [ "$(meta term w51)" = herdr ] &&
+   grep -q "^workspace create --cwd $tmp/wt51 --label project-51 --no-focus" "$fake/term.calls" &&
+   ! grep -q "pane split\|tab create\|agent rename" "$fake/term.calls"'
+check "the name is reported and recorded" \
+  'says "name=project-51" && [ "$(meta name w51)" = project-51 ]'
+out=$(cd "$repo" && DISPATCH_TERM=herdr "$here/start.sh" --brief "$b" --id s51 --scout 2>&1); rc=$?
+check "a scout is named as one" \
+  '[ "$rc" -eq 0 ] && grep -q "^workspace create .*--label project-scout-51 " "$fake/term.calls"'
 
 # 7b. Names: the prefix is the rule line when the project has one; --name names this session.
 printf 'Session-prefix: gw\n' > "$repo/AGENTS.md"; g add -A; g commit -q -m prefix
 out=$(cd "$repo" && DISPATCH_TERM=herdr HERDR_PANE_ID=w1:p1 HERDR_TAB_ID=w1:t1 \
   "$here/start.sh" --name dispatch 2>&1); rc=$?
-check "--name names the dispatcher's own agent and tab with the project's prefix" \
+check "--name names the dispatcher's own workspace with the project's prefix" \
   '[ "$rc" -eq 0 ] && says "^named gw-dispatch" &&
-   grep -q "^tab rename w1:t1 gw-dispatch" "$fake/term.calls" &&
-   grep -q "^agent rename w1:p1 gw-dispatch" "$fake/term.calls"'
+   grep -q "^workspace rename w1 gw-dispatch" "$fake/term.calls" &&
+   ! grep -q "agent rename\|tab rename" "$fake/term.calls"'
 out=$(cd "$repo" && TMUX_PANE=%3 "$here/start.sh" --name aide2 2>&1); rc=$?
 check "--name works in tmux" \
   '[ "$rc" -eq 0 ] && grep -q "^rename-window -t %3 gw-aide2" "$fake/term.calls"'
