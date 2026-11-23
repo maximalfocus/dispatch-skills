@@ -39,7 +39,8 @@ Rebuild your picture from records, never from memory: open acceptance plans and 
 comments), pending `ACCEPT-REQ`s, the environment locks you hold, and the test data you created but
 have not deleted. Finish or release those first. At a milestone, or when your context is large,
 rotate: write a short handover naming open requests, held locks, and undeleted test data, and let a
-fresh session continue with `/dispatch-aide`.
+fresh session continue with `/dispatch-aide`. Name your session first, so the user can tell it
+apart: `skills/dispatch/scripts/start.sh --name aide` (`aide2` for a second aide).
 
 ## Phase 0 — Make the environments ready
 

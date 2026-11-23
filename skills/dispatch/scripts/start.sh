@@ -5,6 +5,11 @@
 #   start.sh --brief <file> [--id <id>] [--agent claude|codex] [--scout]
 #   start.sh --hook busy|idle|ended    what the worker session's own hooks call
 #   start.sh --codex-hooks             print the hooks a Codex user installs and trusts once
+#   start.sh --name <role>             name the session this runs in: dispatch, aide, aide2
+#
+# Every session is named <prefix>-<part>: the role for the dispatcher and the aides, the issue
+# number for a worker, scout-<number> for a scout. The prefix is the `Session-prefix:` rule line,
+# or the main checkout's directory name.
 #
 # From the Brief it reads ISSUE #<n>, BASE <branch>, WORKTREE <path>, TIMEBOX <90m|2h>, and on
 # the LIMITS line write=<paths> and deny=<paths>, up to the first ';'. A field it cannot read is
@@ -15,10 +20,11 @@
 #   3. record the folder as trusted in the agent's own config
 #   4. write the worker's role-guard config (role, root, write, deny) and its hooks, and require
 #      `role-guard --probe worker` to be denied through those hooks
-#   5. write <id>.meta (issue, kind, agent, term, handle, worktree, branch, base, brief, timebox
-#      in seconds, started) and open the agent in a new terminal with the Brief
+#   5. write <id>.meta (issue, kind, agent, term, handle, name, worktree, branch, base, brief,
+#      timebox in seconds, started) and open the agent with the Brief in a tab (herdr) or window
+#      (tmux) of its own, under its name
 #   6. wait up to DISPATCH_START_WAIT (60) seconds for the worker's own hook to write its state,
-#      then append the start to the start log that board.sh accounts from
+#      then name the agent and append the start to the start log that board.sh accounts from
 # A start that is not confirmed is a failed start, not a worker: its records are removed, and its
 # terminal is left open to look at. No permission-bypass flag is ever added.
 # Claude Code gets its hooks per session (--settings). Codex runs only hooks its user has reviewed
@@ -45,6 +51,20 @@ if [ "${1:-}" = --codex-hooks ]; then
 fi
 
 die() { echo "start: $*" >&2; exit 1; }
+prefix() {  # the project's session prefix
+  local p
+  p=$(ds_rule HEAD Session-prefix | head -n 1)
+  [ -n "$p" ] || p=$(basename "$(cd "$(git rev-parse --git-common-dir)/.." && pwd -P)")
+  printf '%s' "$p" | tr -c 'A-Za-z0-9_-' '-'
+}
+if [ "${1:-}" = --name ]; then
+  case ${2:-} in ''|*[!a-z0-9]*) die "usage: start.sh --name <role>" ;; esac
+  git rev-parse --git-dir >/dev/null 2>&1 || die "run inside the project"
+  term=$(rt_term) || exit 1; name="$(prefix)-$2"
+  if [ "$term" = herdr ]; then rt_name herdr "${HERDR_PANE_ID:-}" "$name" "${HERDR_TAB_ID:-}"
+  else rt_name tmux "${TMUX_PANE:-}" "$name"; fi || die "could not name this session $name"
+  echo "named $name"; exit 0
+fi
 usage() { die "usage: start.sh --brief <file> [--id <id>] [--agent claude|codex] [--scout]"; }
 brief=; id=; agent=${DISPATCH_AGENT:-claude}; kind=worker
 while [ $# -gt 0 ]; do
@@ -146,13 +166,14 @@ failed() {  # reason — a start that is not confirmed leaves no worker behind
   die "failed start of $id: $*"
 }
 rm -f "$st/workers/$id.state"
-printf '%s\n' "issue=$issue" "kind=$kind" "agent=$agent" "term=$term" "worktree=$wt" \
+name="$(prefix)-$issue"; [ "$kind" = worker ] || name="$(prefix)-scout-$issue"
+printf '%s\n' "issue=$issue" "kind=$kind" "agent=$agent" "term=$term" "name=$name" "worktree=$wt" \
   "branch=$branch" "base=$base" "brief=$brief" "timebox=$timebox" "started=$(date +%s)" > "$meta"
 prompt="Act as this project's dispatch worker (the dispatch-worker skill). Your Brief is the"
 prompt="$prompt file $brief: read it first."
 cmd="DISPATCH_WORKER=$(rt_sq "$id") DISPATCH_STATE=$(rt_sq "$st") DISPATCH_ROLE=worker"
 cmd="$cmd DISPATCH_GUARD_CONFIG=$(rt_sq "$conf") $(rt_agent "$agent" "$settings" "$prompt")"
-handle=$(rt_open "$term" "$id" "$wt" "$cmd") && [ -n "$handle" ] ||
+handle=$(rt_open "$term" "$name" "$wt" "$cmd") && [ -n "$handle" ] ||
   failed "no $term terminal could be opened"
 echo "handle=$handle" >> "$meta"
 
@@ -166,5 +187,8 @@ while :; do
     "$term $handle is left open (a trust or sign-in screen is the usual cause)"
   i=$((i + 1)); sleep 0.2
 done
+rt_name "$term" "$handle" "$name" 2>/dev/null ||
+  echo "start: note: the agent was not named $name" >&2
 echo "$(date +%s) $id $issue $kind $branch" >> "$st/starts"; ds_trim "$st/starts"  # for board.sh
-echo "started $id issue=#$issue agent=$agent $term=$handle worktree=$wt timebox=$box"
+echo "started $id issue=#$issue agent=$agent $term=$handle worktree=$wt timebox=$box" \
+  "name=$name"

@@ -39,7 +39,7 @@ planning, briefing, landing, or talking to the user goes to a scout.
    of context → a smaller issue; dropped link → the same Brief; tool error → another model), and
    replan after two retries. Check a late worker's word against the live PR. Every worker ends
    landed, replaced, or absorbed by another issue. Never discard a worktree with unlanded commits.
-4. Arm the watcher before the turn ends. Then continue at the current phase.
+4. Run `scripts/start.sh --name dispatch`, arm the watcher, and continue at the current phase.
 
 ## Phase 0 — Inception (before the first worker)
 

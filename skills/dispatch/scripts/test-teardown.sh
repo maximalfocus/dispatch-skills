@@ -84,7 +84,10 @@ teardown "$wt" --scout --report "$wt/report.md"
 check "a report inside the worktree refuses" '[ "$rc" -eq 2 ] && says "inside" && [ -d "$wt" ]'
 echo findings > "$tmp/report.md"
 st="$repo/.dispatch/state"; mkdir -p "$st/workers"
-echo "idle 1 4" > "$st/workers/w4.state"; echo x > "$st/workers/w4.meta"
+echo "idle 1 4" > "$st/workers/w4.state"
+printf 'term=herdr\nhandle=w1:p4\n' > "$st/workers/w4.meta"
+printf '#!/bin/sh\necho "$*" >> "$FAKE/term.calls"\n' > "$fake/herdr"; chmod +x "$fake/herdr"
+export DISPATCH_HERDR="$fake/herdr"
 echo "busy 1 5" > "$st/workers/w44.state"
 mkdir -p "$st/guard" "$st/inbox/w4"; echo role=worker > "$st/guard/w4.conf"
 teardown "$wt" --scout --report "$tmp/report.md" --worker w4
@@ -94,6 +97,16 @@ check "--worker clears that worker's state files" \
   '[ ! -e "$st/workers/w4.state" ] && [ ! -e "$st/workers/w4.meta" ]'
 check "and its guard config and inbox" '[ ! -e "$st/guard/w4.conf" ] && [ ! -e "$st/inbox/w4" ]'
 check "and no other worker's" '[ -f "$st/workers/w44.state" ]'
+check "and closes the terminal start.sh opened for it" \
+  '[ "$(cat "$fake/term.calls")" = "pane close w1:p4" ]'
+rm -f "$fake/term.calls"; worktree w6
+printf 'term=herdr\nhandle=w1:p6\n' > "$st/workers/w6.meta"
+teardown "$wt" --worker w6
+check "a refused teardown closes nothing and keeps the records" \
+  '[ "$rc" -eq 2 ] && [ ! -e "$fake/term.calls" ] && [ -f "$st/workers/w6.meta" ]'
+git -C "$wt" push -q origin w6; teardown "$wt" --worker w6
+check "once its work is on the remote, the worker and its terminal go" \
+  '[ "$rc" -eq 0 ] && [ "$(cat "$fake/term.calls")" = "pane close w1:p6" ]'
 
 # 5. Only a linked worktree of this project is ever a target.
 teardown "$repo"; check "the main checkout is an error" '[ "$rc" -eq 1 ] && [ -d "$repo/.git" ]'

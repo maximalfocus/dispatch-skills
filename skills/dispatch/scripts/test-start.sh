@@ -11,7 +11,8 @@ no() { fail=$((fail + 1)); echo "FAIL: $*"; }
 check() { if eval "$2"; then ok; else no "$1 (rc=$rc out=$out)"; fi; }
 
 unset DISPATCH_STATE DISPATCH_WORKER DISPATCH_ROLE DISPATCH_GUARD_CONFIG DISPATCH_AGENT TMUX \
-  DISPATCH_REMOTE HERDR_ENV CODEX_HOME CLAUDE_PROJECT_DIR DS_LOCK_TRIES
+  DISPATCH_REMOTE HERDR_ENV CODEX_HOME CLAUDE_PROJECT_DIR DS_LOCK_TRIES HERDR_WORKSPACE_ID \
+  HERDR_PANE_ID HERDR_TAB_ID TMUX_PANE
 export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
 export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.invalid
 export GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.invalid
@@ -39,7 +40,8 @@ cat > "$fake/herdr" <<'EOF'
 #!/usr/bin/env bash
 echo "$*" >> "$FAKE/term.calls"
 case "$1 $2" in
-  "pane split") echo "w1:p9" >> "$FAKE/panes"; echo '{"result":{"pane":{"pane_id":"w1:p9"}}}' ;;
+  "tab create") echo "w1:p9" >> "$FAKE/panes"
+    echo '{"result":{"root_pane":{"pane_id":"w1:p9"},"tab":{"tab_id":"w1:t9"}}}' ;;
   "pane run") dir=$(sed -n 's/.*--cwd \([^ ]*\) .*/\1/p' "$FAKE/term.calls" | tail -n 1)
     (cd "$dir" && sh -c "$4" > "$FAKE/pane.log" 2>&1 &) ;;
   "pane get") grep -qxF -- "$3" "$FAKE/panes" ;;
@@ -75,12 +77,14 @@ start() { out=$(cd "$repo" && "$here/start.sh" "$@" 2>&1); rc=$?; }
 says() { printf '%s' "$out" | grep -q -- "$1"; }
 meta() { sed -n "s/^$1=//p" "$st/workers/$2.meta" | head -n 1; }
 opened() {  # how many terminals were opened
-  local n; n=$(grep -c '^new-\|^pane split' "$fake/term.calls" 2>/dev/null); echo "${n:-0}"
+  local n; n=$(grep -c '^new-\|^tab create' "$fake/term.calls" 2>/dev/null); echo "${n:-0}"
 }
 
 # 1. A good Brief starts a confirmed worker in its own worktree.
 reset; brief 12; start --brief "$b"
 check "a worker starts" '[ "$rc" -eq 0 ] && says "^started w12 issue=#12 agent=claude tmux=%1"'
+check "its tmux session carries its name" \
+  'grep -q "^new-session .* -s project-12 " "$fake/term.calls" && says "name=project-12\$"'
 check "its worktree is on issue-12 from the remote base" \
   '[ "$(git -C "$tmp/wt12" symbolic-ref --short HEAD)" = issue-12 ] &&
    [ "$(git -C "$tmp/wt12" rev-parse HEAD)" = "$(g rev-parse origin/main)" ]'
@@ -181,9 +185,33 @@ check "outside a worker it does nothing" '[ "$rc" -eq 0 ]'
 # 7. herdr carries a worker the same way.
 reset; brief 51
 out=$(cd "$repo" && DISPATCH_TERM=herdr "$here/start.sh" --brief "$b" 2>&1); rc=$?
-check "a worker starts in a herdr pane" \
+check "a worker starts in a herdr tab of its own, under its name" \
   '[ "$rc" -eq 0 ] && says "herdr=w1:p9" && [ "$(meta term w51)" = herdr ] &&
-   grep -q "^pane split --current --direction right --cwd $tmp/wt51 --no-focus" "$fake/term.calls"'
+   grep -q "^tab create --cwd $tmp/wt51 --label project-51 --no-focus" "$fake/term.calls" &&
+   ! grep -q "pane split" "$fake/term.calls"'
+check "the agent is named once the start is confirmed" \
+  'says "name=project-51" && [ "$(meta name w51)" = project-51 ] &&
+   grep -q "^agent rename w1:p9 project-51" "$fake/term.calls"'
+out=$(cd "$repo" && DISPATCH_TERM=herdr HERDR_WORKSPACE_ID=w7 "$here/start.sh" --brief "$b" \
+  --id s51 --scout 2>&1); rc=$?
+check "a scout is named as one, in the caller's workspace" \
+  '[ "$rc" -eq 0 ] && grep -q "^tab create --workspace w7 .*--label project-scout-51 " \
+     "$fake/term.calls"'
+
+# 7b. Names: the prefix is the rule line when the project has one; --name names this session.
+printf 'Session-prefix: gw\n' > "$repo/AGENTS.md"; g add -A; g commit -q -m prefix
+out=$(cd "$repo" && DISPATCH_TERM=herdr HERDR_PANE_ID=w1:p1 HERDR_TAB_ID=w1:t1 \
+  "$here/start.sh" --name dispatch 2>&1); rc=$?
+check "--name names the dispatcher's own agent and tab with the project's prefix" \
+  '[ "$rc" -eq 0 ] && says "^named gw-dispatch" &&
+   grep -q "^tab rename w1:t1 gw-dispatch" "$fake/term.calls" &&
+   grep -q "^agent rename w1:p1 gw-dispatch" "$fake/term.calls"'
+out=$(cd "$repo" && TMUX_PANE=%3 "$here/start.sh" --name aide2 2>&1); rc=$?
+check "--name works in tmux" \
+  '[ "$rc" -eq 0 ] && grep -q "^rename-window -t %3 gw-aide2" "$fake/term.calls"'
+out=$(cd "$repo" && "$here/start.sh" --name "x y" 2>&1); rc=$?
+check "a role that is not a plain word is usage" '[ "$rc" -eq 1 ]'
+g rm -q AGENTS.md; g commit -q -m "no prefix"
 out=$(cd "$repo" && DISPATCH_TERM=screen "$here/start.sh" --brief "$b" 2>&1); rc=$?
 check "an unknown terminal is an error" '[ "$rc" -eq 1 ] && says "unknown DISPATCH_TERM"'
 

@@ -13,13 +13,16 @@
 # Uncommitted or untracked files always refuse: the worktree is removed without force. The local
 # branch goes with it, except a scout's branch whose HEAD is not safe, which is kept.
 # --worker <id> also removes that worker's records (state, meta, guard config, inbox), so it no
-# longer counts as in flight.
+# longer counts as in flight, and closes the terminal start.sh opened for it. A refusal closes
+# nothing.
 # Exit: 0 removed · 2 refused · 1 the facts could not be read.
 # Env: DISPATCH_GH (gh), DISPATCH_REPO (owner/name), DISPATCH_REMOTE (origin).
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 # shellcheck source=lib.sh
 . "$here/lib.sh"
+# shellcheck source=runtime.sh
+. "$here/runtime.sh"
 usage() {
   echo "usage: teardown.sh <worktree> [--pr <n>] [--base <branch>] [--worker <id>]" >&2
   echo "       teardown.sh <worktree> --scout --report <file> [--worker <id>]" >&2; exit 1
@@ -108,7 +111,10 @@ if [ -n "$branch" ]; then
     git branch -q -D "$branch" || echo "teardown: note: branch $branch was not deleted" >&2
   fi
 fi
-if [ -n "$worker" ]; then  # every record start.sh and inbox.sh keep for it
+if [ -n "$worker" ]; then  # its terminal, then every record start.sh and inbox.sh keep for it
+  get() { sed -n "s/^$1=//p" "$st/workers/$worker.meta" 2>/dev/null | head -n 1; }
+  [ -z "$(get handle)" ] || rt_close "$(get term)" "$(get handle)" 2>/dev/null ||
+    echo "teardown: note: the terminal $(get term) $(get handle) was already closed" >&2
   rm -f "$st/workers/$worker".* "$st/guard/$worker.conf"; rm -rf "$st/inbox/$worker"
 fi
 echo "removed $wt ($why)"
