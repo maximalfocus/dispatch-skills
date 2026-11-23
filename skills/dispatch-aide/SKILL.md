@@ -150,8 +150,10 @@ write. The kit is the only thing you change in the project's repository.
 
 ## Environments and test data
 
-- One holder at a time per shared machine, browser profile, or database. Never drive a screen in
-  use; if you find one in use, stop and say so.
+- One holder at a time per shared machine, browser profile, or database: take its lock first with
+  `skills/dispatch/scripts/envlock.sh acquire <env>` (in the `/dispatch` skill, beside this one;
+  exit 75 means held) and release it after. Never drive a screen in use; if you find one in use,
+  stop and say so.
 - Test data lives where the project rules allow, is marked as test data, recorded, and deleted at
   the end of the run. Never write to production.
 - Never type, store, or print a credential. An expired session is an Ask of kind `do`.
