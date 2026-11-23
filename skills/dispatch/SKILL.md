@@ -72,7 +72,7 @@ Do not start delivery until each holds; most stalls later come from skipping one
    `/dispatch-evolve` before more workers start.
 4. **Watch.** Run `scripts/watch.sh` (beside this skill) in the project; it exits 0 with
    wakes: a Hand-back or an aide verdict from your own gh login, a handed-back PR whose head moved,
-   a worker idle with no hand-back, GitHub unreachable. Handle each, then
+   a worker idle with no hand-back, overdue, or leaving its inbox unread, GitHub unreachable. Then
    `scripts/drain.sh --ack-through <seq>`; never ack before handling. Exit 124 is quiet: send the
    user nothing.
 5. **Land.** On a Hand-back (a worker's, or the aide's for its kit), ask for an update from the base
@@ -115,9 +115,9 @@ WHY      <the end-customer need this serves, one line>
 GOAL     <one sentence>   ACCEPT <issue criteria + aide plan link>   TIER <1|2|3>
 CONTEXT  <file and PR pointers; each upstream Hand-back this depends on, pasted in full>
 GATE     <exact test command; exit code decides>
-LIMITS   <paths it may write and may not; data and credential rules; grants that apply, quoted>
+LIMITS   write=<paths> deny=<paths>; <data and credential rules; grants that apply, quoted>
 FORBIDDEN <merge, rebase or retarget a PR, force-push, edit outside LIMITS; issue-specific bans>
-TIMEBOX  <rough cap; on expiry, hand back status=blocked with what is done, never run on>
+TIMEBOX  <cap as 90m or 2h>; on expiry, hand back status=blocked with what is done, never run on
 STANDING <the project's standing orders, verbatim>
 HANDBACK post the Hand-back as a PR comment, then stop
 ```
@@ -197,7 +197,7 @@ loses anything is a defect in the records.
 ## Mechanics (scripts own these; see `DESIGN.md` §12 for contracts)
 
 Done, in `scripts/` (usage in each header): `watch.sh`, `drain.sh`, `land.sh`, `teardown.sh`,
-`envlock.sh`, `role-guard.sh`. By hand: turn-end guard · start (WIP: 75) · inbox · board.
+`envlock.sh`, `role-guard.sh`, `start.sh` (WIP: 75), `inbox.sh`. By hand: turn-end guard, board.
 
 ## Never
 

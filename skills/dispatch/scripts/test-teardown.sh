@@ -48,7 +48,7 @@ rm "$wt/untracked.txt"; echo edit >> "$wt/a.txt"; teardown "$wt"
 check "an uncommitted edit refuses" '[ "$rc" -eq 2 ] && [ -d "$wt" ]'
 git -C "$wt" checkout -q a.txt; teardown "$wt"
 check "a pushed, clean worktree is removed" '[ "$rc" -eq 0 ] && [ ! -d "$wt" ]'
-check "the reason names the fact" 'says "HEAD is on a origin branch"'
+check "the reason names the fact" 'says "HEAD is on a branch of origin"'
 check "its local branch is deleted" '! has_branch w1'
 
 # 2. A branch deleted on the remote after a squash merge is safe only through its merged PR.
@@ -86,11 +86,13 @@ echo findings > "$tmp/report.md"
 st="$repo/.dispatch/state"; mkdir -p "$st/workers"
 echo "idle 1 4" > "$st/workers/w4.state"; echo x > "$st/workers/w4.meta"
 echo "busy 1 5" > "$st/workers/w44.state"
+mkdir -p "$st/guard" "$st/inbox/w4"; echo role=worker > "$st/guard/w4.conf"
 teardown "$wt" --scout --report "$tmp/report.md" --worker w4
 check "a scout with its report is removed" '[ "$rc" -eq 0 ] && [ ! -d "$wt" ]'
 check "its unpushed branch is kept" 'has_branch w4 && says "kept branch w4"'
 check "--worker clears that worker's state files" \
   '[ ! -e "$st/workers/w4.state" ] && [ ! -e "$st/workers/w4.meta" ]'
+check "and its guard config and inbox" '[ ! -e "$st/guard/w4.conf" ] && [ ! -e "$st/inbox/w4" ]'
 check "and no other worker's" '[ -f "$st/workers/w44.state" ]'
 
 # 5. Only a linked worktree of this project is ever a target.

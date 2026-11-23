@@ -12,7 +12,8 @@
 # A scout's worktree goes only when its report exists, is not empty, and lies outside the worktree.
 # Uncommitted or untracked files always refuse: the worktree is removed without force. The local
 # branch goes with it, except a scout's branch whose HEAD is not safe, which is kept.
-# --worker <id> also removes that worker's state files, so it no longer counts as in flight.
+# --worker <id> also removes that worker's records (state, meta, guard config, inbox), so it no
+# longer counts as in flight.
 # Exit: 0 removed · 2 refused · 1 the facts could not be read.
 # Env: DISPATCH_GH (gh), DISPATCH_REPO (owner/name), DISPATCH_REMOTE (origin).
 set -u
@@ -61,7 +62,7 @@ why=
 safe() {  # is HEAD's work provably held somewhere else? sets $why to the fact that proves it
   local state tree
   if [ -n "$(git branch -r --list "$remote/*" --contains "$head" 2>/dev/null)" ]; then
-    why="HEAD is on a $remote branch"; return 0
+    why="HEAD is on a branch of $remote"; return 0
   fi
   if [ -n "$pr" ]; then
     command -v jq >/dev/null || die "jq is required"
@@ -107,5 +108,7 @@ if [ -n "$branch" ]; then
     git branch -q -D "$branch" || echo "teardown: note: branch $branch was not deleted" >&2
   fi
 fi
-[ -z "$worker" ] || rm -f "$st/workers/$worker".*
+if [ -n "$worker" ]; then  # every record start.sh and inbox.sh keep for it
+  rm -f "$st/workers/$worker".* "$st/guard/$worker.conf"; rm -rf "$st/inbox/$worker"
+fi
 echo "removed $wt ($why)"

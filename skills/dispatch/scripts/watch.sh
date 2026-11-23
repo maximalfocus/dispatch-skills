@@ -11,6 +11,9 @@
 #   idle      a worker idle ≥ DISPATCH_IDLE_SECS (300) with no hand-back in the 5 min before it
 #             went idle; worker files are workers/<id>.state = "<busy|idle> <epoch> <issue>";
 #             an empty file or an idle line with no epoch is noted, then skipped
+#   overdue   a busy worker past its TIMEBOX with no new push since it started or last pushed,
+#             once per worker and TIMEBOX; <id>.meta holds timebox= (seconds), started=, branch=
+#   inbox     a worker left a message unread after its rings, or its terminal is gone (inbox.sh)
 #   error     GitHub unreachable for 20 polls in a row       key error:github:<hour>
 # A comment counts when its author login is in DISPATCH_TRUSTED_LOGINS (default: the login gh
 # posts as, read once from `gh api user`) or its author_association is in DISPATCH_TRUSTED_AUTHORS
@@ -141,12 +144,31 @@ poll_heads() {  # a handed-back PR whose live head is not the handed-back head m
   done
 }
 
+overdue() {  # id issue — a new push restarts the TIMEBOX; none by its end is one wake
+  local m="$st/workers/$1.meta" box from sha now
+  box=$(sed -n 's/^timebox=//p' "$m" 2>/dev/null | head -n 1)
+  from=$(sed -n 's/^progress=//p; s/^started=//p' "$m" 2>/dev/null | tail -n 1)
+  case $box:$from in :*|*:|*[!0-9:]*) return 0 ;; esac
+  now=$(date +%s)
+  [ "$box" -gt 0 ] && [ $((now - from)) -ge "$box" ] || return 0
+  ! grep -qxF "overdue:$1:$from" "$st/seen" 2>/dev/null || return 0
+  sha=$(git ls-remote "${DISPATCH_REMOTE:-origin}" \
+    "refs/heads/$(sed -n 's/^branch=//p' "$m" | head -n 1)" 2>/dev/null) || return 0
+  sha=${sha%%[[:space:]]*}
+  if [ -n "$sha" ] && [ "$sha" != "$(sed -n 's/^pushed=//p' "$m" | tail -n 1)" ]; then
+    printf 'pushed=%s\nprogress=%s\n' "$sha" "$now" >> "$m"; return 0
+  fi
+  ds_enqueue "$st" overdue "overdue:$1:$from" \
+    "worker $1 (issue #${2:-?}) is past its TIMEBOX with no new push"
+}
+
 poll_workers() {
   local f id state since issue now recent
   now=$(date +%s)
   for f in "$st"/workers/*.state; do
     [ -f "$f" ] || continue
     id=$(basename "$f" .state); read -r state since issue < "$f"
+    [ "$state" != busy ] || overdue "$id" "$issue"
     case $state in  # a half-written or unreadable file is noted, never fatal
       idle) ;;
       '') echo "watch: skipping $f: empty worker state" >&2; continue ;;
@@ -182,6 +204,7 @@ while :; do
   fi
   echo "$fails" > "$st/gh-fails"
   poll_workers
+  "$here/inbox.sh" tick
   ds_print_queue "$st" && exit 0
   [ "$once" -eq 0 ] || exit 124
   if [ "$seconds" -gt 0 ] && [ $(( $(date +%s) - start )) -ge "$seconds" ]; then exit 124; fi
