@@ -15,6 +15,7 @@ cat > "$fake/gh" <<'EOF'
 #!/usr/bin/env bash
 case "$*" in
   *api\ user*) echo alice ;;
+  *repo\ view*) echo o/r ;;
   *issues/comments*) cat "$FAKE/comments.json" ;;
   *pulls*) cat "$FAKE/pulls.json" ;;
   *) echo "fake gh: unexpected: $*" >&2; exit 1 ;;
@@ -169,6 +170,19 @@ check "the replaced list no longer trusts the gh login" '[ "$rc" -eq 124 ]'
 # (e) no login and no override: refuse to run rather than go deaf.
 ( cd "$repo" && DISPATCH_GH=/bin/false "$here/watch.sh" --once ) >/dev/null 2>"$tmp/err9e"; rc=$?
 check "an unknown login exits 1" '[ "$rc" -eq 1 ] && grep -q DISPATCH_TRUSTED_LOGINS "$tmp/err9e"'
+# (f) one dropped connection at a start-up lookup is retried, not fatal.
+cat > "$fake/flaky" <<'EOF'
+#!/usr/bin/env bash
+n=$(cat "$FAKE/flaky.n" 2>/dev/null || echo 0); echo $((n + 1)) > "$FAKE/flaky.n"
+[ "$n" -ge 1 ] || { echo "TLS handshake timeout" >&2; exit 1; }
+exec "$FAKE/gh" "$@"
+EOF
+chmod +x "$fake/flaky"; rm -f "$fake/flaky.n"; echo '[]' > "$fake/comments.json"
+( cd "$repo" && DISPATCH_GH="$fake/flaky" "$here/watch.sh" --once ) >/dev/null 2>&1; rc=$?
+check "a transient login failure is retried" '[ "$rc" -eq 124 ]'
+rm -f "$fake/flaky.n"
+( cd "$repo" && DISPATCH_REPO= DISPATCH_GH="$fake/flaky" "$here/watch.sh" --once ) >/dev/null 2>&1
+rc=$?; check "a transient repository lookup failure is retried" '[ "$rc" -eq 124 ]'
 
 # 10. Reclaiming a dead holder runs under the steal mutex, so a second starter cannot steal.
 rm -rf "$st/watch.lock" "$st/watch.mutex"; mkdir -p "$st/watch.lock" "$st/watch.mutex"

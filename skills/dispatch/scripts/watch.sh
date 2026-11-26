@@ -18,8 +18,9 @@
 # A comment counts when its author login is in DISPATCH_TRUSTED_LOGINS (default: the login gh
 # posts as, read once from `gh api user`) or its author_association is in DISPATCH_TRUSTED_AUTHORS
 # (default "OWNER COLLABORATOR"). Anyone else's HANDBACK or ACCEPT line is data, not an event: it is
-# noted once on stderr and never wakes the dispatcher (Article 8). A watcher that cannot tell which
-# login it posts as, and was given no DISPATCH_TRUSTED_LOGINS, exits 1 rather than run blind.
+# noted once on stderr and never wakes the dispatcher (Article 8). Start-up lookups are tried 3
+# times, a poll apart, so one dropped connection does not stop the watcher; a watcher that still
+# cannot tell which login it posts as, given no DISPATCH_TRUSTED_LOGINS, exits 1, never blind.
 # Exit: 0 wakes queued (printed with the ack command) · 124 quiet until --once or --seconds ran
 #       out · 3 another watcher holds this project · 1 error.
 # Env: DISPATCH_POLL (15 s), DISPATCH_IDLE_SECS, DISPATCH_REPO (owner/name), DISPATCH_GH (gh),
@@ -47,11 +48,21 @@ case $seconds$poll$idle_after in
 esac
 command -v jq >/dev/null || { echo "watch: jq is required" >&2; exit 1; }
 st=$(ds_state) || exit 1
-repo=${DISPATCH_REPO:-$($gh repo view --json nameWithOwner --jq .nameWithOwner)} || exit 1
+try3() {  # print a start-up lookup's non-empty answer; retry a transient failure twice
+  local n out
+  for n in 1 2 3; do
+    out=$("$@" 2>/dev/null) && [ -n "$out" ] && [ "$out" != null ] && {
+      printf '%s' "$out"; return 0; }
+    [ "$n" -eq 3 ] || sleep "$poll"
+  done
+  return 1
+}
+repo=${DISPATCH_REPO:-$(try3 $gh repo view --json nameWithOwner --jq .nameWithOwner)} || {
+  echo "watch: cannot read the repository from gh after 3 tries" >&2; exit 1; }
 # Identity first: the team posts with this account, so its login is trusted before any association.
 trusted_logins=${DISPATCH_TRUSTED_LOGINS:-}
 if [ -z "$trusted_logins" ]; then
-  trusted_logins=$($gh api user --jq .login 2>/dev/null) || trusted_logins=
+  trusted_logins=$(try3 $gh api user --jq .login) || trusted_logins=
   case $trusted_logins in
     ''|null) echo "watch: cannot tell which login gh posts as; set DISPATCH_TRUSTED_LOGINS" >&2
       exit 1 ;;
