@@ -77,6 +77,20 @@ out=$(watch); check "the ack removed only seq <= N" \
   'printf "%s" "$out" | grep -q "^wake $((first + 1)) verdict"'
 drain --ack-through 999 >/dev/null
 
+# 3b. What the aide addresses to the dispatcher wakes too: a plan, an Ask, a note. Prose that
+# only mentions those words, or carries them mid-line, stays quiet.
+{ comment 6 "ACCEPTANCE-PLAN issue=#9
+steps follow"; comment 7 "ASK kind=do from=aide blocking=#9
+need: power"; comment 8 "NOTE issue=#9 the user said: ship it";
+  comment 9 "PLANS change. ASKing is free. Aide to dispatcher, ASK kind=do"; } | comments
+out=$(watch)
+check "a plan wakes" 'has "^wake [0-9]* plan ACCEPTANCE-PLAN issue=#9"'
+check "an Ask wakes" 'has "^wake [0-9]* ask ASK kind=do from=aide"'
+check "a note wakes" 'has "^wake [0-9]* note NOTE issue=#9"'
+check "only line-start markers wake" 'printf "%s" "$out" | grep -c "^wake " | grep -qx 3'
+drain --ack-through 999 >/dev/null
+watch >/dev/null; rc=$?; check "plan, Ask and note wake once" '[ "$rc" -eq 124 ]'
+
 # 4. A handed-back PR wakes only when its live head moved.
 echo '[{"number":10,"head":{"sha":"aaa111ffff"}},{"number":11,"head":{"sha":"bbb"}}]' \
   > "$fake/pulls.json"

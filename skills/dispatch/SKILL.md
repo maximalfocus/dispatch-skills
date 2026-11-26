@@ -51,8 +51,7 @@ Do not start delivery until each holds; most stalls later come from skipping one
 3. The aide's acceptance strategy: environments, end-to-end approach per stack, risk tiers, and
    the model family it judges on.
 4. Environment readiness: the aide's verification kit has run end to end on every environment
-   without the user's hands. Anything that needed the user (sign-ins, OS prompts) was done once,
-   in one session.
+   without the user's hands; what needed the user (sign-ins, OS prompts) was done once, together.
 5. Gates recorded: the test command, `Required-checks:` (a sibling's shared code too), the merge
    grant, `Gate-files:`, WIP limit; each role's guard seen denying one forbidden act.
 
@@ -71,10 +70,10 @@ Do not start delivery until each holds; most stalls later come from skipping one
    alone through land and acceptance, and a flaw it shows in the Brief template goes to
    `/dispatch-evolve` before more workers start.
 4. **Watch.** Run `scripts/watch.sh` (beside this skill) in the project; it exits 0 with
-   wakes: a Hand-back or an aide verdict from your own gh login, a handed-back PR whose head moved,
-   a worker idle with no hand-back, overdue, or leaving its inbox unread, GitHub unreachable. Then
-   `scripts/drain.sh --ack-through <seq>`; never ack before handling. Exit 124 is quiet: send the
-   user nothing.
+   wakes: a Hand-back, an aide plan, verdict, Ask, or note from your own gh login, a handed-back PR
+   whose head moved, a worker idle with no hand-back, overdue, or leaving its inbox unread, GitHub
+   unreachable. Then `scripts/drain.sh --ack-through <seq>`; never ack before handling. Exit 124 is
+   quiet: send the user nothing.
 5. **Land.** On a Hand-back (a worker's, or the aide's for its kit), ask for an update from the base
    if it has since changed code the PR calls or that calls it; else run the land script on the
    handed-back head. It merges only if the live head equals it and every required check reported
@@ -131,15 +130,17 @@ summary: <what changed; any improvement beyond the design and why>
 open: <blocker or decision, with the smallest options; empty when done>
 ```
 
-**Acceptance request / verdict** (dispatcher ↔ aide), issue comments:
+**Plan / request / verdict / note** (dispatcher ↔ aide), issue comments, each line first in its own:
 
 ```text
+ACCEPTANCE-PLAN issue=#<n>
+NOTE issue=#<n> <what the dispatcher must know: the user's words, verbatim and dated>
 ACCEPT-REQ issue=#<n> head=<sha> env=<where> tier=<1|2|3>
 ACCEPT issue=#<n> head=<sha> verdict=PASS|FAIL|NOT-RUN evidence=<links>
 failed: <criterion → observed vs expected>; not-run: <criterion → why>
 ```
 
-**Ask** (any role → user, only through the dispatcher), an issue labelled `ask`:
+**Ask** (any role → user, only through the dispatcher): an issue labelled `ask`, or an aide comment:
 
 ```text
 ASK kind=decide|do from=<role> blocking=<issue/PR or none>
@@ -148,7 +149,6 @@ options: <smallest compliant first, with consequences>   recommend: <one>
 ```
 
 The user's answer is recorded verbatim with its date as a comment, then the issue is closed.
-
 **Cross-project message** (dispatcher → sibling dispatcher), through its inbox:
 
 ```text
