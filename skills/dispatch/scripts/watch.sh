@@ -7,6 +7,9 @@
 # Wakes (each queued once, by key):
 #   handback  a new comment line starting "HANDBACK "        key comment:<id>
 #   verdict   a new comment line starting "ACCEPT "          key comment:<id>
+#   plan      a new comment line starting "ACCEPTANCE-PLAN "  key comment:<id>
+#   ask, note a new comment line starting "ASK " or "NOTE ": what the aide or a worker addresses
+#             to the dispatcher outside a hand-back or a verdict   key comment:<id>
 #   head      a handed-back PR whose live head moved         key head:<pr>:<sha>
 #   idle      a worker idle ≥ DISPATCH_IDLE_SECS (300) with no hand-back in the 5 min before it
 #             went idle; worker files are workers/<id>.state = "<busy|idle> <epoch> <issue>";
@@ -17,7 +20,7 @@
 #   error     GitHub unreachable for 20 polls in a row       key error:github:<hour>
 # A comment counts when its author login is in DISPATCH_TRUSTED_LOGINS (default: the login gh
 # posts as, read once from `gh api user`) or its author_association is in DISPATCH_TRUSTED_AUTHORS
-# (default "OWNER COLLABORATOR"). Anyone else's HANDBACK or ACCEPT line is data, not an event: it is
+# (default "OWNER COLLABORATOR"). Anyone else's such line is data, not an event: it is
 # noted once on stderr and never wakes the dispatcher (Article 8). Start-up lookups are tried 3
 # times, a poll apart, so one dropped connection does not stop the watcher; a watcher that still
 # cannot tell which login it posts as, given no DISPATCH_TRUSTED_LOGINS, exits 1, never blind.
@@ -89,7 +92,7 @@ ds_unlock "$st/watch.mutex"
 trap 'rm -rf "$lock"' EXIT
 trap 'exit 130' INT TERM
 
-poll_comments() {  # queue HANDBACK/ACCEPT lines; record hand-backs tab-separated, then the epoch
+poll_comments() {  # queue event lines; record hand-backs tab-separated, then the epoch
   local since json latest rows id line url ok issue pr sha
   since=$(cat "$st/gh-since" 2>/dev/null)
   if [ -z "$since" ]; then  # first run: start from now, never replay history
@@ -102,7 +105,8 @@ poll_comments() {  # queue HANDBACK/ACCEPT lines; record hand-backs tab-separate
   rows=$(printf '%s' "$json" |
     jq -r --arg trusted "$trusted" --arg logins "$trusted_logins" '.[] | . as $c
       | (.body | if type == "string" then . else "" end) as $body
-      | [$body | split("\n")[] | sub("\r$"; "") | select(test("^(HANDBACK|ACCEPT) "))][0] // empty
+      | [$body | split("\n")[] | sub("\r$"; "")
+         | select(test("^(HANDBACK|ACCEPT|ACCEPTANCE-PLAN|ASK|NOTE) "))][0] // empty
       | (($c.author_association // "") | if type == "string" then ascii_upcase else "" end) as $who
       | (($c.user | if type == "object" then .login else "" end) // "") as $login
       | ($login | if type == "string" then ascii_upcase else "" end) as $by
@@ -132,7 +136,10 @@ poll_comments() {  # queue HANDBACK/ACCEPT lines; record hand-backs tab-separate
           printf '%s\t%s\t%s\t%s\n' "$issue" "$pr" "$sha" "$(date +%s)" >> "$st/handbacks"
         fi
         ds_enqueue "$st" handback "comment:$id" "$line $url" ;;
-      *) ds_enqueue "$st" verdict "comment:$id" "$line $url" ;;
+      ACCEPTANCE-PLAN*) ds_enqueue "$st" plan "comment:$id" "$line $url" ;;
+      ACCEPT*) ds_enqueue "$st" verdict "comment:$id" "$line $url" ;;
+      ASK*) ds_enqueue "$st" ask "comment:$id" "$line $url" ;;
+      *) ds_enqueue "$st" note "comment:$id" "$line $url" ;;
     esac
   done
   ds_trim "$st/seen"  # an outsider's marker must not grow this file without bound
